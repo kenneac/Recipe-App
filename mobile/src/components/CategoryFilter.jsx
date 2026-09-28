@@ -28,7 +28,7 @@ export default function CategoryFilter({ categories, selectedCategory, onSelectC
               <Text
                 style={[homeStyles.categoryText, isSelected && homeStyles.selectedCategoryText]}
               >
-                {category.name}
+                {category.name}        
               </Text>
             </TouchableOpacity>
           );

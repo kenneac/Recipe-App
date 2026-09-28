@@ -4,18 +4,19 @@
     "jsx": "react-jsx",
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
-    }
+      "@/*": ["./src/*"],
+      "@/assets/*": ["./assets/*"]
+    },
+    "checkJs": true,
+    "allowJs": true
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
+    "**/*.js",
+    "**/*.jsx",
+    ".expo/types/**/*.js",
     "expo-env.d.ts"
   ]
 }

@@ -1,4 +1,4 @@
-import { Slot } from "expo-router";
+import { Slot, Stack } from "expo-router";
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import SafeScreen from "@/components/SafeScreen";
