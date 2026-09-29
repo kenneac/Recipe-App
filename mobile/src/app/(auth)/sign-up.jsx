@@ -20,7 +20,6 @@ import VerifyEmail from "./verify-email";
 
 const SignUpScreen = () => {
   const router = useRouter();
-  // Core 3: useSignUp() no longer returns isLoaded / setActive.
   const { signUp } = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,9 +36,7 @@ const SignUpScreen = () => {
     setLoading(true);
 
     try {
-      // Core 3: methods no longer throw for API errors; they resolve with { error }.
-      // signUp.create({ emailAddress, password }) -> signUp.password({ emailAddress, password })
-      const { error } = await signUp.password({
+     const { error } = await signUp.password({
         emailAddress: email.trim(),
         password,
       });
@@ -53,7 +50,6 @@ const SignUpScreen = () => {
         return;
       }
 
-      // prepareEmailAddressVerification({ strategy: "email_code" }) -> verifications.sendEmailCode()
       const { error: sendError } = await signUp.verifications.sendEmailCode();
       if (sendError) {
         Alert.alert(
@@ -67,7 +63,6 @@ const SignUpScreen = () => {
 
       setPendingVerification(true);
     } catch (err) {
-      // Only network / unexpected failures land here now.
       Alert.alert("Error", JSON.stringify(err, null, 2) || "Failed to create account");
       console.error(JSON.stringify(err, null, 2));
     } finally {
@@ -75,8 +70,6 @@ const SignUpScreen = () => {
     }
   };
 
-  // Wipe everything and return to a blank sign-up form. Submitting again calls
-  // signUp.password(), which begins a fresh sign-up attempt.
   const handleRestart = () => {
     setEmail("");
     setPassword("");
