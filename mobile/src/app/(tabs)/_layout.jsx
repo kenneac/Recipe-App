@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@/constants/colors";
 
 const TabsLayout = () => {
+
   return (
     <Tabs
       screenOptions={{

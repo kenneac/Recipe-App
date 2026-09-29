@@ -36,7 +36,7 @@ const SearchScreen = () => {
     }
 
     return results
-      .slice(0, 12)
+      //.slice(0, 12)
       .map((meal) => MealAPI.transformMealData(meal))
       .filter((meal) => meal !== null);
   };

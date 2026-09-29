@@ -15,7 +15,6 @@ import { Image } from "expo-image";
 import { COLORS } from "@/constants/colors";
 
 const VerifyEmail = ({ email, onBack, onRestart }) => {
-  // Core 3: useSignUp() no longer returns isLoaded / setActive.
   const { signUp } = useSignUp();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,9 +24,7 @@ const VerifyEmail = ({ email, onBack, onRestart }) => {
 
     setLoading(true);
     try {
-      // attemptEmailAddressVerification({ code }) -> verifications.verifyEmailCode({ code })
-      // Methods resolve with { error } instead of throwing for API errors.
-      const { error } = await signUp.verifications.verifyEmailCode({
+    const { error } = await signUp.verifications.verifyEmailCode({
         code: code.trim(),
       });
       if (error) {
@@ -41,7 +38,6 @@ const VerifyEmail = ({ email, onBack, onRestart }) => {
       }
 
       if (signUp.status === "complete") {
-        // setActive({ session: createdSessionId }) -> signUp.finalize()
         const { error: finalizeError } = await signUp.finalize();
         if (finalizeError) {
           Alert.alert(
@@ -56,7 +52,6 @@ const VerifyEmail = ({ email, onBack, onRestart }) => {
         console.error(JSON.stringify(signUp, null, 2));
       }
     } catch (err) {
-      // Only network / unexpected failures land here now.
       Alert.alert("Error", JSON.stringify(err, null, 2) || "Verification failed");
       console.error(JSON.stringify(err, null, 2));
     } finally {

@@ -30,8 +30,8 @@ const SignUpScreen = () => {
   const handleSignUp = async () => {
     if (!email || !password)
       return Alert.alert("Error", "Please fill in all fields");
-    if (password.length < 6)
-      return Alert.alert("Error", "Password must be at least 6 characters");
+    if (password.length < 8)
+      return Alert.alert("Error", "Password must be at least 8 characters");
 
     setLoading(true);
 
