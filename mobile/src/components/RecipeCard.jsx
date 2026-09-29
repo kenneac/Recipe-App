@@ -2,8 +2,8 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { COLORS } from "../constants/colors";
-import { recipeCardStyles } from "../assets/styles/home.styles";
+import { COLORS } from "@/constants/colors";
+import { recipeCardStyles } from "@/assets/styles/home.styles";
 
 export default function RecipeCard({ recipe }) {
   const router = useRouter();

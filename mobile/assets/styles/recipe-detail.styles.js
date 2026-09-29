@@ -1,5 +1,5 @@
 import { StyleSheet, Dimensions } from "react-native";
-import { COLORS } from "../../constants/colors";
+import { COLORS } from "@/constants/colors";
 
 const { height } = Dimensions.get("window");
 
@@ -13,7 +13,7 @@ export const recipeDetailStyles = StyleSheet.create({
     position: "relative",
   },
   imageContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   headerImage: {
     width: "100%",

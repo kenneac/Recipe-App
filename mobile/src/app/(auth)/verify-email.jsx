@@ -1,4 +1,4 @@
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp } from "@clerk/expo";
 import { useState } from "react";
 import {
   View,
@@ -10,29 +10,54 @@ import {
   TextInput,
   TouchableOpacity,
 } from "react-native";
-import { authStyles } from "../../assets/styles/auth.styles";
+import { authStyles } from "@/assets/styles/auth.styles";
 import { Image } from "expo-image";
-import { COLORS } from "../../constants/colors";
-const VerifyEmail = ({ email, onBack }) => {
-  const { isLoaded, signUp, setActive } = useSignUp();
+import { COLORS } from "@/constants/colors";
+
+const VerifyEmail = ({ email, onBack, onRestart }) => {
+  // Core 3: useSignUp() no longer returns isLoaded / setActive.
+  const { signUp } = useSignUp();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleVerification = async () => {
-    if (!isLoaded) return;
+    if (!code) return Alert.alert("Error", "Please enter the verification code");
 
     setLoading(true);
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+      // attemptEmailAddressVerification({ code }) -> verifications.verifyEmailCode({ code })
+      // Methods resolve with { error } instead of throwing for API errors.
+      const { error } = await signUp.verifications.verifyEmailCode({
+        code: code.trim(),
+      });
+      if (error) {
+        Alert.alert(
+          "Error",
+            error.message ||
+            "Verification failed",
+        );
+        console.error(JSON.stringify(error, null, 2));
+        return;
+      }
 
-      if (signUpAttempt.status === "complete") {
-        await setActive({ session: signUpAttempt.createdSessionId });
+      if (signUp.status === "complete") {
+        // setActive({ session: createdSessionId }) -> signUp.finalize()
+        const { error: finalizeError } = await signUp.finalize();
+        if (finalizeError) {
+          Alert.alert(
+            "Error",
+            JSON.stringify(finalizeError, null, 2) ||
+              "Could not complete sign up",
+          );
+          console.error(JSON.stringify(finalizeError, null, 2));
+        }
       } else {
         Alert.alert("Error", "Verification failed. Please try again.");
-        console.error(JSON.stringify(signUpAttempt, null, 2));
+        console.error(JSON.stringify(signUp, null, 2));
       }
     } catch (err) {
-      Alert.alert("Error", err.errors?.[0]?.message || "Verification failed");
+      // Only network / unexpected failures land here now.
+      Alert.alert("Error", JSON.stringify(err, null, 2) || "Verification failed");
       console.error(JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
@@ -53,7 +78,7 @@ const VerifyEmail = ({ email, onBack }) => {
           {/* Image Container */}
           <View style={authStyles.imageContainer}>
             <Image
-              source={require("../../assets/images/i3.png")}
+              source={require("@/assets/images/i3.png")}
               style={authStyles.image}
               contentFit="contain"
             />
@@ -61,7 +86,9 @@ const VerifyEmail = ({ email, onBack }) => {
 
           {/* Title */}
           <Text style={authStyles.title}>Verify Your Email</Text>
-          <Text style={authStyles.subtitle}>We&apos;ve sent a verification code to {email}</Text>
+          <Text style={authStyles.subtitle}>
+            We&apos;ve sent a verification code to {email}
+          </Text>
 
           <View style={authStyles.formContainer}>
             {/* Verification Code Input */}
@@ -74,17 +101,23 @@ const VerifyEmail = ({ email, onBack }) => {
                 onChangeText={setCode}
                 keyboardType="number-pad"
                 autoCapitalize="none"
+                autoComplete="one-time-code"
               />
             </View>
 
             {/* Verify Button */}
             <TouchableOpacity
-              style={[authStyles.authButton, loading && authStyles.buttonDisabled]}
+              style={[
+                authStyles.authButton,
+                loading && authStyles.buttonDisabled,
+              ]}
               onPress={handleVerification}
               disabled={loading}
               activeOpacity={0.8}
             >
-              <Text style={authStyles.buttonText}>{loading ? "Verifying..." : "Verify Email"}</Text>
+              <Text style={authStyles.buttonText}>
+                {loading ? "Verifying..." : "Verify Email"}
+              </Text>
             </TouchableOpacity>
 
             {/* Back to Sign Up */}
@@ -93,6 +126,21 @@ const VerifyEmail = ({ email, onBack }) => {
                 <Text style={authStyles.link}>Back to Sign Up</Text>
               </Text>
             </TouchableOpacity>
+
+            {/* Restart the entire registration (clears email & password too) */}
+            <TouchableOpacity
+              style={authStyles.linkContainer}
+              onPress={onRestart ?? onBack}
+              disabled={loading}
+            >
+              <Text style={authStyles.linkText}>
+                Wrong email?{" "}
+                <Text style={authStyles.link}>Start over</Text>
+              </Text>
+            </TouchableOpacity>
+
+            {/* Required by Clerk for sign-up on Expo web; skipped on iOS/Android */}
+            <View nativeID="clerk-captcha" />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
