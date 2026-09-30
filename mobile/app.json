@@ -12,6 +12,7 @@
       "icon": "./assets/images/icon.png"
     },
     "android": {
+            "package": "com.kenneacsteam.recipeapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "monochromeImage": "./assets/images/icon.png",
@@ -40,6 +41,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16368c7e-5f18-4df6-9f26-aeea002aee4f"
+      }
+    },
+    "owner": "kenneacs-team"
   }
 }
