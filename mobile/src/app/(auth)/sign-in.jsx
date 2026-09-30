@@ -60,18 +60,12 @@ const SignInScreen = () => {
       }
 
       if (signIn.status === "needs_second_factor") {
-        Alert.alert(
-          "Verification Required",
-          "This account requires an additional verification step.",
-        );
+        router.push("/(auth)/sign-in-verification");
         return;
       }
 
       if (signIn.status === "needs_client_trust") {
-        Alert.alert(
-          "Verification Required",
-          "Additional device verification is required.",
-        );
+        router.push("/(auth)/sign-in-verification");
         return;
       }
 

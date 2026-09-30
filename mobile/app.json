@@ -31,8 +31,8 @@
         {
           "backgroundColor": "#E8F6F6",
           "android": {
-            "image": "./assets/images/splash-screen.png",
-            "imageWidth": 200
+            "image": "./assets/images/icon.png",
+            "imageWidth": 240
           }
         }
       ],
