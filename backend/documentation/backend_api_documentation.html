@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interactive backend architecture documentation for the Recipe App API — Express 5, Drizzle ORM, Neon PostgreSQL.">
+<title>Recipe App · Backend API Documentation</title>
+<style>
+/* ================= TOKENS & BASE ================= */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--bg-soft:#0e1522;--panel:#111a2b;--card:#141e31;--card-2:#19253c;
+  --border:#22304b;--border-2:#31425f;--glass:rgba(17,26,43,.88);--hover:rgba(255,255,255,.045);
+  --text:#e9eef8;--muted:#9dabc6;--faint:#6d7c99;
+  --accent:#ff7d45;--accent-soft:rgba(255,125,69,.14);--accent-line:rgba(255,125,69,.42);
+  --cyan:#3ec6f0;--cyan-soft:rgba(62,198,240,.13);--cyan-line:rgba(62,198,240,.4);
+  --purple:#a78bfa;--purple-soft:rgba(167,139,250,.14);--purple-line:rgba(167,139,250,.42);
+  --green:#34d399;--green-soft:rgba(52,211,153,.13);--green-line:rgba(52,211,153,.4);
+  --red:#f87171;--red-soft:rgba(248,113,113,.13);--red-line:rgba(248,113,113,.42);
+  --yellow:#fbbf24;--yellow-soft:rgba(251,191,36,.14);--yellow-line:rgba(251,191,36,.42);
+  --code-bg:#0d1524;--code-border:rgba(255,255,255,.09);
+  --radius:14px;--radius-sm:10px;--shadow:0 12px 34px rgba(2,6,18,.5);
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Code",ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  --topbar-h:60px;--sidebar-w:288px;
+}
+[data-theme="light"]{
+  --bg:#f3f7fc;--bg-soft:#e9eff9;--panel:#ffffff;--card:#ffffff;--card-2:#f4f8fd;
+  --border:#d9e2f1;--border-2:#c2cfe5;--glass:rgba(255,255,255,.9);--hover:rgba(22,42,80,.05);
+  --text:#16202f;--muted:#4e5e79;--faint:#7d8ca6;
+  --shadow:0 10px 26px rgba(24,44,80,.10);
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{line-height:1.25;margin:0}
+p{margin:0 0 .9em}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--mono);font-size:.88em}
+:not(pre) > code{background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:.1em .38em;color:var(--accent)}
+hr{border:0;border-top:1px dashed var(--border);margin:22px 0}
+/* ================= TOPBAR ================= */
+.topbar{position:fixed;inset:0 0 auto 0;height:var(--topbar-h);display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--glass);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);z-index:60}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;color:var(--text);letter-spacing:.2px;white-space:nowrap}
+.brand .logo{font-size:1.2rem}
+.brand em{font-style:normal;font-weight:500;color:var(--faint);font-size:.8rem;border-left:1px solid var(--border-2);padding-left:10px}
+.topbar-meta{display:flex;gap:6px;margin-left:auto}
+.pill{font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);background:var(--card);padding:3px 9px;border-radius:999px;white-space:nowrap}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1rem;cursor:pointer;transition:border-color .18s,background .18s}
+.icon-btn:hover{border-color:var(--border-2);background:var(--card-2)}
+#menuBtn{display:none}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--accent),var(--yellow),var(--cyan));z-index:70;transition:width .1s linear}
+.skip-link{position:absolute;left:-999px;top:0;background:var(--accent);color:#fff;padding:8px 14px;border-radius:0 0 8px 0;z-index:80}
+.skip-link:focus{left:0}
+/* ================= LAYOUT ================= */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:26px;max-width:1520px;margin:0 auto;padding:calc(var(--topbar-h) + 22px) 22px 70px}
+.sidebar{position:sticky;top:calc(var(--topbar-h) + 18px);align-self:start;max-height:calc(100vh - var(--topbar-h) - 36px);overflow-y:auto;padding:14px 13px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);scrollbar-width:thin}
+.sidebar-title{font-size:.72rem;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--faint);padding:4px 10px 8px}
+.nav-group{margin:13px 0 5px;font-size:.68rem;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);padding:0 10px}
+.nav-link{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:var(--muted);font-size:.89rem;border:1px solid transparent;transition:background .16s,color .16s}
+.nav-link .num{font-family:var(--mono);font-size:.7rem;color:var(--faint);min-width:20px}
+.nav-link:hover{background:var(--card-2);color:var(--text);text-decoration:none}
+.nav-link.active{background:var(--accent-soft);border-color:var(--accent-line);color:var(--text)}
+.nav-link.active .num{color:var(--accent)}
+.sidebar-actions{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)}
+.mini-btn{flex:1;font:inherit;font-size:.76rem;padding:7px 8px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:.16s}
+.mini-btn:hover{color:var(--text);border-color:var(--border-2)}
+.overlay{position:fixed;inset:0;background:rgba(3,7,15,.62);opacity:0;pointer-events:none;transition:opacity .2s;z-index:45}
+.overlay.show{opacity:1;pointer-events:auto}
+main{min-width:0}
+/* ================= HERO ================= */
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--panel),var(--card) 55%,var(--card-2));border:1px solid var(--border);border-radius:calc(var(--radius) + 4px);padding:32px 32px 26px;box-shadow:var(--shadow);margin-bottom:24px}
+.hero::after{content:"";position:absolute;top:-130px;right:-90px;width:340px;height:340px;background:radial-gradient(circle,var(--accent-soft),transparent 66%);pointer-events:none}
+.hero h1{font-size:clamp(1.55rem,3.3vw,2.4rem);letter-spacing:-.4px}
+.hero h1 span{background:linear-gradient(90deg,var(--accent),var(--yellow));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lead{color:var(--muted);max-width:78ch;margin-top:10px;margin-bottom:0}
+.hero-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:4px 11px;border-radius:999px;border:1px solid var(--border);background:var(--card-2);color:var(--muted)}
+.chip.c-cyan{color:var(--cyan);border-color:var(--cyan-line);background:var(--cyan-soft)}
+.chip.c-accent{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.chip.c-purple{color:var(--purple);border-color:var(--purple-line);background:var(--purple-soft)}
+.chip.c-green{color:var(--green);border-color:var(--green-line);background:var(--green-soft)}
+.chip.c-red{color:var(--red);border-color:var(--red-line);background:var(--red-soft)}
+.chip.c-yellow{color:var(--yellow);border-color:var(--yellow-line);background:var(--yellow-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:22px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 15px}
+.stat b{display:block;font-size:1.4rem;line-height:1.15;font-family:var(--mono)}
+.stat span{font-size:.73rem;text-transform:uppercase;letter-spacing:.9px;color:var(--faint)}
+/* ================= SECTIONS ================= */
+.doc-section{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:22px;scroll-margin-top:calc(var(--topbar-h) + 16px);overflow:hidden}
+.section-head{display:flex;align-items:center;gap:14px;padding:17px 22px;cursor:pointer;user-select:none;transition:background .16s}
+.section-head:hover{background:var(--card-2)}
+.section-head:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.section-head .section-num{font-family:var(--mono);font-size:.76rem;color:var(--accent);border:1px solid var(--accent-line);background:var(--accent-soft);padding:3px 9px;border-radius:999px}
+.section-head h2{font-size:1.16rem;flex:1}
+.section-head .chev{color:var(--faint);transition:transform .2s;font-size:.85rem}
+.doc-section.collapsed .chev{transform:rotate(-90deg)}
+.section-body{padding:4px 22px 24px;border-top:1px solid var(--border)}
+.doc-section.collapsed .section-body{display:none}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}}
+/* ================= TYPO HELPERS ================= */
+.sub{margin:22px 0 10px;font-size:1rem;letter-spacing:.2px;border-left:3px solid var(--accent);padding-left:10px}
+ul.checklist{list-style:none;margin:0 0 10px;padding:0}
+ul.checklist li{position:relative;padding:5px 0 5px 30px;color:var(--muted)}
+ul.checklist li::before{content:"✓";position:absolute;left:4px;top:5px;color:var(--green);font-weight:700}
+ul.tight,ol.tight{margin:6px 0 4px;padding-left:22px}
+ul.tight li,ol.tight li{margin:4px 0}
+/* ================= LAYER STACK ================= */
+.layer-stack{display:flex;flex-direction:column;gap:10px;margin:14px 0 6px}
+.layer{display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 15px;background:var(--card)}
+.layer small{display:block;color:var(--faint);font-size:.8rem;line-height:1.45}
+.layer-tag{font-family:var(--mono);font-size:.72rem;font-weight:700;letter-spacing:.6px;padding:3px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.layer.l1{border-left:3px solid var(--accent)}
+.layer.l1 .layer-tag{color:var(--accent);background:var(--accent-soft);border-color:var(--accent-line)}
+.layer.l2{border-left:3px solid var(--cyan)}
+.layer.l2 .layer-tag{color:var(--cyan);background:var(--cyan-soft);border-color:var(--cyan-line)}
+.layer.l3{border-left:3px solid var(--green)}
+.layer.l3 .layer-tag{color:var(--green);background:var(--green-soft);border-color:var(--green-line)}
+/* ================= TABLES ================= */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin:12px 0 16px}
+table.data{width:100%;border-collapse:collapse;font-size:.88rem;min-width:560px;background:var(--card)}
+table.data th{text-align:left;padding:10px 14px;background:var(--card-2);color:var(--muted);font-size:.72rem;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+table.data td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--muted)}
+table.data tr:last-child td{border-bottom:0}
+table.data td:first-child{color:var(--text);font-weight:600}
+table.data tr:hover td{background:var(--hover)}
+/* ================= CALLOUTS ================= */
+.callout{border:1px solid var(--border);border-left-width:3px;border-radius:var(--radius-sm);padding:14px 16px;margin:16px 0;background:var(--card)}
+.callout-title{font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.callout.c-warn{border-left-color:var(--yellow);background:var(--yellow-soft)}
+.callout.c-warn .callout-title{color:var(--yellow)}
+.callout.c-info{border-left-color:var(--cyan);background:var(--cyan-soft)}
+.callout.c-info .callout-title{color:var(--cyan)}
+.callout.c-good{border-left-color:var(--green);background:var(--green-soft)}
+.callout.c-good .callout-title{color:var(--green)}
+.callout.c-bad{border-left-color:var(--red);background:var(--red-soft)}
+.callout.c-bad .callout-title{color:var(--red)}
+.callout p:last-child{margin-bottom:0}
+/* ================= CODE BLOCKS ================= */
+.codeblock{margin:14px 0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--code-bg)}
+.code-head{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--code-border)}
+.code-head .code-lang{font-family:var(--mono);font-size:.7rem;letter-spacing:1px;text-transform:uppercase;color:#8fa3c8}
+.code-head .code-path{font-family:var(--mono);font-size:.76rem;color:#b9c8e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{margin-left:auto;font:inherit;font-size:.72rem;padding:4px 10px;border-radius:7px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#c8d6ef;cursor:pointer;transition:.15s;white-space:nowrap}
+.copy-btn:hover{background:rgba(255,255,255,.13);color:#fff}
+.copy-btn.done{color:var(--green);border-color:var(--green-line)}
+.codeblock pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.6;color:#dbe6f7;tab-size:2}
+/* ================= ENDPOINT CARDS ================= */
+.endpoint{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);margin:16px 0;overflow:hidden}
+.endpoint-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--border);background:var(--card-2)}
+.method{font-family:var(--mono);font-size:.72rem;font-weight:700;letter-spacing:.8px;padding:4px 10px;border-radius:7px;border:1px solid}
+.method.get{color:var(--green);background:var(--green-soft);border-color:var(--green-line)}
+.method.post{color:var(--yellow);background:var(--yellow-soft);border-color:var(--yellow-line)}
+.method.del{color:var(--red);background:var(--red-soft);border-color:var(--red-line)}
+.endpoint-path{font-family:var(--mono);font-size:.9rem}
+.endpoint-path .param{color:var(--cyan)}
+.endpoint-meta{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.endpoint-body{padding:2px 16px 14px}
+table.kv{width:100%;border-collapse:collapse;font-size:.85rem;margin:10px 0}
+table.kv td{padding:7px 10px;border-bottom:1px dashed var(--border);vertical-align:top;color:var(--muted)}
+table.kv td:first-child{width:200px;color:var(--text);font-weight:600;font-family:var(--mono);font-size:.8rem}
+table.kv tr:last-child td{border-bottom:0}
+.code{font-family:var(--mono);font-weight:700;font-size:.78rem;padding:2px 8px;border-radius:6px;border:1px solid;white-space:nowrap}
+.code.s2{color:var(--green);border-color:var(--green-line);background:var(--green-soft)}
+.code.s4{color:var(--yellow);border-color:var(--yellow-line);background:var(--yellow-soft)}
+.code.s5{color:var(--red);border-color:var(--red-line);background:var(--red-soft)}
+/* ================= TECH GRID ================= */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(218px,1fr));gap:12px;margin:14px 0}
+.tech{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);padding:13px 14px;transition:transform .18s,border-color .18s}
+.tech:hover{transform:translateY(-2px);border-color:var(--border-2)}
+.tech-icon{width:30px;height:30px;flex:0 0 30px;object-fit:contain}
+.tech-emoji{width:30px;height:30px;flex:0 0 30px;display:inline-flex;align-items:center;justify-content:center;font-size:1.25rem;background:var(--card-2);border:1px solid var(--border);border-radius:9px}
+.tech strong{display:block;font-size:.9rem}
+.tech small{color:var(--faint);font-size:.76rem;line-height:1.45;display:block;margin-top:2px}
+.tag{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:6px;margin-top:6px;border:1px solid}
+.tag.live{color:var(--green);border-color:var(--green-line);background:var(--green-soft)}
+.tag.client{color:var(--cyan);border-color:var(--cyan-line);background:var(--cyan-soft)}
+.tag.dev{color:var(--purple);border-color:var(--purple-line);background:var(--purple-soft)}
+.tag.off{color:var(--yellow);border-color:var(--yellow-line);background:var(--yellow-soft)}
+.tag.unused{color:var(--red);border-color:var(--red-line);background:var(--red-soft)}
+/* ================= FOLDER TREE ================= */
+.tree{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--code-bg);padding:16px 18px;overflow-x:auto;margin:14px 0}
+.tree pre{margin:0;font-family:var(--mono);font-size:.8rem;line-height:1.75;color:#c7d5ee;white-space:pre}
+.tree .d{color:#7fd0f5;font-weight:600}
+.tree .f{color:#ffd08a}
+.tree .k{color:#8fe3b0}
+.tree .c{color:#7d8fb5}
+.tree .star{color:var(--accent);font-weight:700}
+/* ================= MERMAID DIAGRAMS ================= */
+.diagram{border:1px solid var(--border);border-radius:var(--radius-sm);background:#0d1524;padding:16px;margin:16px 0;overflow-x:auto}
+.diagram-cap{display:flex;align-items:center;gap:8px;font-size:.77rem;letter-spacing:.4px;text-transform:uppercase;color:#8fa3c8;font-weight:700;margin-bottom:8px}
+.diagram-cap .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:0 0 8px}
+.diagram .mermaid{display:flex;justify-content:center;min-height:40px}
+.diagram-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:16px}
+.mermaid-error{color:#f87171;font-family:var(--mono);font-size:.78rem;padding:10px;border:1px dashed #f87171;border-radius:8px;white-space:pre-wrap}
+.diagram-note{color:#8fa3c8;font-size:.78rem;margin-top:8px}
+.diagram-note code{color:#ffd08a;background:transparent;border:0}
+/* ================= FOOTER & BACKTOP ================= */
+.page-foot{border-top:1px solid var(--border);background:var(--bg-soft);padding:26px 22px 34px;color:var(--muted);font-size:.85rem}
+.page-foot p{max-width:1180px;margin:0 auto 8px}
+.foot-links a{white-space:nowrap}
+.backtop{position:fixed;right:20px;bottom:20px;width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-size:1.1rem;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s;z-index:55;text-decoration:none}
+.backtop.show{opacity:1;pointer-events:auto}
+/* ================= RESPONSIVE ================= */
+@media (max-width:1180px){.topbar-meta{display:none}}
+@media (max-width:980px){
+  #menuBtn{display:inline-flex}
+  .layout{grid-template-columns:minmax(0,1fr);padding-left:14px;padding-right:14px;gap:0}
+  .sidebar{position:fixed;top:calc(var(--topbar-h) + 12px);left:12px;right:12px;width:auto;max-height:calc(100vh - var(--topbar-h) - 24px);z-index:50;transform:translateY(-12px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+  .sidebar.open{transform:none;opacity:1;pointer-events:auto}
+  .brand em{display:none}
+  .section-body{padding:4px 16px 20px}
+  .hero{padding:24px 20px 20px}
+}
+@media (max-width:560px){
+  body{font-size:15px}
+  .hero h1{font-size:1.5rem}
+  .stats{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+  .diagram-grid{grid-template-columns:minmax(0,1fr)}
+  .code-head .code-path{display:none}
+}
+@media print{
+  .topbar,.sidebar,.backtop,.scroll-progress,.overlay,.copy-btn,#menuBtn{display:none!important}
+  .layout{display:block;padding:0}
+  .doc-section,.hero,.diagram{break-inside:avoid;box-shadow:none}
+  body{font-size:11pt}
+  .doc-section.collapsed .section-body{display:block}
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div class="scroll-progress" id="progressBar"></div>
+<header class="topbar">
+  <button class="icon-btn" id="menuBtn" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+  <a class="brand" href="#top"><span class="logo">🍳</span> Recipe App <em>backend documentation</em></a>
+  <div class="topbar-meta">
+    <span class="pill">Express 5</span>
+    <span class="pill">Drizzle ORM</span>
+    <span class="pill">Neon PostgreSQL</span>
+  </div>
+  <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle color theme" title="Toggle light / dark theme">◐</button>
+</header>
+<div class="overlay" id="overlay"></div>
+<div class="layout" id="top">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">Contents</div>
+    <nav aria-label="Section navigation">
+      <div class="nav-group">Foundations</div>
+      <a class="nav-link" href="#overview"><span class="num">01</span> Backend Overview</a>
+      <a class="nav-link" href="#architecture"><span class="num">02</span> Architecture Diagram</a>
+      <a class="nav-link" href="#request-flow"><span class="num">03</span> Request Flow</a>
+      <div class="nav-group">Codebase</div>
+      <a class="nav-link" href="#folder-structure"><span class="num">04</span> Folder Structure</a>
+      <a class="nav-link" href="#technologies"><span class="num">05</span> Technologies Used</a>
+      <div class="nav-group">API &amp; security</div>
+      <a class="nav-link" href="#api"><span class="num">06</span> API Architecture</a>
+      <a class="nav-link" href="#authentication"><span class="num">07</span> Authentication Flow</a>
+      <a class="nav-link" href="#middleware"><span class="num">09</span> Middleware Pipeline</a>
+      <div class="nav-group">Data &amp; integrations</div>
+      <a class="nav-link" href="#database"><span class="num">08</span> Database Layer</a>
+      <a class="nav-link" href="#external-services"><span class="num">10</span> External Services</a>
+      <div class="nav-group">Reference</div>
+      <a class="nav-link" href="#diagrams"><span class="num">11</span> Diagram Gallery</a>
+      <a class="nav-link" href="#notes"><span class="num">12</span> Notes &amp; Gaps</a>
+      <a class="nav-link" href="#run"><span class="num">13</span> Running Locally</a>
+    </nav>
+    <div class="sidebar-actions">
+      <button class="mini-btn" id="expandAll" type="button">＋ Expand all</button>
+      <button class="mini-btn" id="collapseAll" type="button">－ Collapse all</button>
+    </div>
+  </aside>
+  <main id="main">
+    <section class="hero">
+      <div class="hero-badges" style="margin:0 0 14px">
+        <span class="chip c-accent">📄 Generated from source analysis</span>
+        <span class="chip">branch: mobile-screens</span>
+        <span class="chip">commit: d508152</span>
+      </div>
+      <h1>Recipe App <span>Backend API</span> Documentation</h1>
+      <p class="lead">A compact Express&nbsp;5 REST API that stores each user's favourite recipes in Neon PostgreSQL through Drizzle ORM. Every diagram, table and code sample on this page was derived from the current <code>backend/</code> source — including the parts that are installed but not wired up, and the parts that do not exist at all.</p>
+      <div class="hero-badges">
+        <span class="chip c-green">Node.js · ESM</span>
+        <span class="chip c-cyan">JavaScript</span>
+        <span class="chip c-accent">Express 5.2.1</span>
+        <span class="chip c-purple">Drizzle ORM 0.45.2</span>
+        <span class="chip c-cyan">Neon serverless PostgreSQL</span>
+        <span class="chip c-yellow">Client-side Clerk auth</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>4</b><span>HTTP endpoints</span></div>
+        <div class="stat"><b>1</b><span>DB table · favorites</span></div>
+        <div class="stat"><b>141</b><span>lines of JS · 5 files</span></div>
+        <div class="stat"><b>1</b><span>global middleware</span></div>
+        <div class="stat"><b>0</b><span>auth middleware</span></div>
+      </div>
+    </section>
+<section class="doc-section" id="overview">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">01</span>
+    <h2>Backend Overview</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p><strong>What it is.</strong> The backend is a single-process, single-file <strong>Express&nbsp;5 REST API</strong> (<code>src/server.js</code>, 83 lines) deployed on Render. It exposes a small JSON surface under <code>/api</code> whose only job is to persist the mobile app's <em>favorites</em> feature in PostgreSQL. Recipe content is <em>not</em> stored or proxied here — the Expo client queries TheMealDB directly — and identity is managed by Clerk on the client. The most accurate description of this backend is a <strong>favorites micro-API with a health probe</strong>.</p>
+
+    <h3 class="sub">Main purpose</h3>
+    <ul class="checklist">
+      <li><strong>Persist favourites</strong> — create, list and delete rows in the <code>favorites</code> table, keyed by the Clerk user id and the TheMealDB recipe id.</li>
+      <li><strong>Health probe</strong> — <code>GET /api/health</code> returns <code>{ success: true }</code> for uptime checks and cold-start warming.</li>
+      <li><strong>Keep-alive (built, disabled)</strong> — <code>config/cron.js</code> pings its own URL every 14 minutes so the Render free tier never sleeps; the import is commented out in <code>server.js</code> line&nbsp;8 to save quota.</li>
+      <li><strong>Stable HTTPS base</strong> for the client — the mobile app hard-codes <code>https://recipe-app-lrg5.onrender.com/api</code> in <code>mobile/src/constants/api.js</code>.</li>
+    </ul>
+
+    <h3 class="sub">Overall architecture</h3>
+    <p>A flat, three-stage pipeline with no abstractions between the HTTP layer and the database driver. Each route handler <em>is</em> the controller, and it calls Drizzle directly:</p>
+    <div class="layer-stack">
+      <div class="layer l1"><span class="layer-tag">HTTP</span><div><b>Express 5 + express.json()</b><small>app setup, body parsing, route table — <code>src/server.js</code></small></div></div>
+      <div class="layer l2"><span class="layer-tag">Handlers</span><div><b>Inline async route handlers</b><small>validation, business logic, try/catch, JSON responses — no controllers/ or services/ folders exist</small></div></div>
+      <div class="layer l3"><span class="layer-tag">Data</span><div><b>Drizzle ORM → neon-http → Neon PostgreSQL</b><small>query builder &amp; schema in <code>src/db/schema.js</code>, connection in <code>src/config/db.js</code></small></div></div>
+    </div>
+
+    <h3 class="sub">At a glance</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Dimension</th><th>Value</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime</td><td>Node.js, ES Modules (<code>"type": "module"</code>)</td><td><a href="../package.json">package.json</a></td></tr>
+          <tr><td>Framework</td><td>Express <code>^5.2.1</code></td><td>package.json dependency</td></tr>
+          <tr><td>Language</td><td>Plain JavaScript (no TypeScript in backend)</td><td><code>src/**/*.js</code></td></tr>
+          <tr><td>ORM / driver</td><td>Drizzle <code>^0.45.2</code> + <code>@neondatabase/serverless</code> <code>^1.1.0</code> (<code>neon-http</code>)</td><td><a href="../src/config/db.js">src/config/db.js</a></td></tr>
+          <tr><td>Database</td><td>Neon serverless PostgreSQL, 1 table: <code>favorites</code></td><td><a href="../src/db/migrations/0000_cloudy_runaways.sql">migration</a></td></tr>
+          <tr><td>Entry point</td><td><code>src/server.js</code> → <code>app.listen(ENV.PORT || 5001)</code></td><td>server.js lines 11, 81–83</td></tr>
+          <tr><td>Hosting</td><td>Render.com (referenced by the cron comment and the client base URL)</td><td><a href="../src/config/cron.js">src/config/cron.js</a></td></tr>
+          <tr><td>Authentication</td><td>None server-side — Clerk handles sessions on the client</td><td>no auth code exists in <code>backend/src</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 class="sub">Configuration (backend/.env)</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Variable</th><th>Read by</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>PORT</code></td><td><code>config/env.js</code> → <code>ENV.PORT</code></td><td>Defaulted twice: <code>5001</code> in env.js and again in server.js line 11</td></tr>
+          <tr><td><code>NODE_ENV</code></td><td><code>config/env.js</code></td><td>Only consumed by the commented-out <code>job.start()</code> production gate (server.js line 13)</td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td><code>config/db.js</code> → <code>neon()</code></td><td>The single live connection string used for every query</td></tr>
+          <tr><td><code>DATABASE_URL_POOLED</code></td><td>—</td><td>Present in <code>.env</code> but <strong>not referenced anywhere in code</strong></td></tr>
+          <tr><td><code>API_URL</code></td><td><code>config/cron.js</code> → <code>https.get()</code></td><td>Self-ping target for the keep-alive job (the job is currently not started)</td></tr>
+          <tr><td><code>EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY</code></td><td>Mobile app only</td><td>Defined in the backend <code>.env</code> but never read by backend code — the <code>EXPO_PUBLIC_</code> prefix targets the Expo client</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout c-warn">
+      <div class="callout-title">⚠️ Two facts shape every diagram on this page</div>
+      <ol class="tight">
+        <li><strong>There is no authentication layer in the backend.</strong> Handlers trust the <code>userId</code> they receive — see <a href="#authentication">§07 Authentication Flow</a>.</li>
+        <li><strong>There are no <code>routes/</code>, <code>controllers/</code>, <code>services/</code> or <code>middleware/</code> folders.</strong> All four endpoints are declared inline in <code>server.js</code> — see <a href="#folder-structure">§04</a> and <a href="#middleware">§09</a>.</li>
+      </ol>
+    </div>
+
+    <h3 class="sub">What the backend deliberately does not include</h3>
+    <div class="chips">
+      <span class="chip">no login / signup endpoints</span>
+      <span class="chip">no recipe catalog storage</span>
+      <span class="chip">no file or image uploads</span>
+      <span class="chip">no websockets / realtime</span>
+      <span class="chip">no caching layer</span>
+      <span class="chip">no background workers (cron disabled)</span>
+      <span class="chip">no admin endpoints</span>
+      <span class="chip">no API versioning</span>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="architecture">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">02</span>
+    <h2>Architecture Diagram</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Every box below exists in the current codebase at commit <code>d508152</code>. Solid arrows are runtime call paths; dashed arrows are configured-but-inactive links or logical (non-enforced) relationships.</p>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 1 · System architecture (click-drag the diagram to pan)</div>
+      <pre class="mermaid">
+flowchart TB
+  subgraph CLIENT["📱 Client layer — Expo / React Native (mobile/)"]
+    App["Recipe App UI<br/>(expo-router screens)"]
+    ClerkSDK["@clerk/expo SDK"]
+    MealAPI["MealAPI service<br/>mobile/src/services/mealAPI.js"]
+  end
+
+  subgraph IDP["🔐 Identity provider"]
+    Clerk["Clerk (hosted)<br/>session + user.id"]
+  end
+
+  subgraph CONTENT["🍽️ Content source"]
+    TheMeal["TheMealDB API<br/>themealdb.com"]
+  end
+
+  subgraph HOST["☁️ Render.com — recipe-app-lrg5.onrender.com"]
+    Express["Express 5 app<br/>src/server.js"]
+    Parser["express.json()<br/>only global middleware"]
+    Router["Route handlers (inline controllers)<br/>GET /api/health<br/>POST /api/favorites<br/>GET /api/favorites/:userId<br/>DELETE /api/favorites/:userId/:recipeId"]
+  end
+
+  subgraph DATA["🗄️ Data layer"]
+    Drizzle["Drizzle ORM 0.45.2<br/>neon-http driver"]
+    NeonDB[("Neon serverless PostgreSQL<br/>table: favorites")]
+  end
+
+  CronJob["⏱️ config/cron.js keep-alive job<br/>(import commented out in server.js)"]
+
+  App -->|"fetch(API_URL + path)<br/>HTTPS JSON"| Express
+  App --> ClerkSDK
+  ClerkSDK -->|"publishable-key auth"| Clerk
+  MealAPI -->|"recipe catalog — direct, not proxied"| TheMeal
+  Express --> Parser
+  Parser --> Router
+  Router -->|"db.insert / db.select / db.delete"| Drizzle
+  Drizzle -->|"SQL over HTTPS"| NeonDB
+  CronJob -.->|"GET /api/health every 14 min"| Express
+
+  classDef client fill:#152743,stroke:#4f7fd0,color:#dbe9ff
+  classDef idp fill:#241d3d,stroke:#8b6ff0,color:#e9e2ff
+  classDef content fill:#16302b,stroke:#2fbf9b,color:#d6f5ea
+  classDef server fill:#3a2417,stroke:#ff8a4c,color:#ffe6d8
+  classDef data fill:#12283a,stroke:#38a3d6,color:#d8f1ff
+  classDef off fill:#1c2333,stroke:#5a6b8c,color:#aab8d4,stroke-dasharray:5 4
+
+  class App,ClerkSDK,MealAPI client
+  class Clerk idp
+  class TheMeal content
+  class Express,Parser,Router server
+  class Drizzle,NeonDB data
+  class CronJob off
+      </pre>
+    </div>
+    <div class="chips">
+      <span class="chip c-cyan">■ Client code (mobile/)</span>
+      <span class="chip c-purple">■ External identity service</span>
+      <span class="chip c-green">■ External content API</span>
+      <span class="chip c-accent">■ Backend code (this repo, backend/)</span>
+      <span class="chip c-red">■ Data layer</span>
+      <span class="chip c-yellow">⇢ configured but inactive / non-enforced</span>
+    </div>
+    <div class="callout c-info">
+      <div class="callout-title">ℹ️ Scope note</div>
+      <p>Clerk and TheMealDB are shown because the mobile client uses them directly — the backend never calls them. The <em>only</em> backend code is the Express process, the config module and the data layer inside this repository; the dashed cron box is written but deliberately not started.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="request-flow">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">03</span>
+    <h2>Request Flow Diagram</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>The backend has no controller layer, no router modules and no route-specific middleware, so the pipeline below is the complete lifecycle of <em>every</em> request. The only global middleware in the entire application is <code>express.json()</code> (server.js line&nbsp;15).</p>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 2 · Generic request lifecycle — matches every route in server.js</div>
+      <pre class="mermaid">
+flowchart TB
+  Req(["① HTTPS request<br/>from Expo client"])
+  Express["② Express 5 process<br/>src/server.js"]
+  JSON["③ express.json()<br/>parses body into req.body"]
+  Match{"④ path + method matched?"}
+  E404["Express default 404<br/>(no custom handler registered)"]
+  Handler["⑤ route handler runs inline<br/>async (req, res) => { try { … } }"]
+  Validate{"⑥ validation<br/>POST: userId + recipeId + title<br/>GET / DELETE: URL params"}
+  E400["400 · { error: 'Missing required fields' }"]
+  ORM["⑦ Drizzle ORM query builder<br/>db.insert / db.select / db.delete"]
+  NeonDB["⑧ Neon PostgreSQL over HTTPS<br/>neon-http driver"]
+  Res["⑨ res.status(200 | 201).json(data)"]
+  Catch["catch block<br/>console.log(error)<br/>500 · { error: 'Something went wrong' }"]
+  Out(["⑩ JSON response to client"])
+
+  Req --> Express
+  Express --> JSON
+  JSON --> Match
+  Match -->|"no"| E404
+  Match -->|"yes"| Handler
+  Handler --> Validate
+  Validate -->|"invalid"| E400
+  Validate -->|"valid"| ORM
+  ORM --> NeonDB
+  NeonDB --> Res
+  Handler -.->|"exception thrown"| Catch
+  Res --> Out
+  E400 --> Out
+  E404 --> Out
+  Catch --> Out
+
+  classDef step fill:#152743,stroke:#4f7fd0,color:#e3edff
+  classDef good fill:#12342b,stroke:#34d399,color:#d1fae5
+  classDef bad fill:#3a1d22,stroke:#f87171,color:#ffe4e4
+  classDef soft fill:#1c2333,stroke:#5a6b8c,color:#aab8d4
+  class Req,Express,JSON,Handler,ORM,NeonDB step
+  class Res,Out good
+  class E400,Catch bad
+  class E404,Match,Validate soft
+      </pre>
+    </div>
+
+    <h3 class="sub">Typical write request — POST /api/favorites</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 3 · Sequence diagram for the favourites write path</div>
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor User as 👤 User
+  participant App as 📱 Expo app
+  participant API as ☁️ Express on Render
+  participant ORM as 🧩 Drizzle ORM
+  participant DB as 🗄️ Neon PostgreSQL
+
+  User->>App: taps Save to favourites
+  App->>App: useUser() resolves user.id
+  App->>API: POST /api/favorites — JSON body
+  API->>API: express.json() fills req.body
+  API->>API: validate userId, recipeId, title
+  API->>ORM: db.insert(favoritesTable).values(...).returning()
+  ORM->>DB: INSERT INTO favorites ... RETURNING *
+  DB-->>ORM: inserted row
+  ORM-->>API: newFavorite[0]
+  API-->>App: 201 Created + favourite row
+  App-->>User: UI shows saved state
+      </pre>
+    </div>
+
+    <h3 class="sub">Per-endpoint happy path</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Endpoint</th><th>Data operation</th><th>Success</th><th>Error paths</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET /api/health</code></td><td>none — constant object literal</td><td><span class="code s2">200</span> <code>{ success: true }</code></td><td>—</td></tr>
+          <tr><td><code>POST /api/favorites</code></td><td><code>db.insert(...).values(...).returning()</code></td><td><span class="code s2">201</span> inserted row</td><td><span class="code s4">400</span> missing fields · <span class="code s5">500</span> catch</td></tr>
+          <tr><td><code>GET /api/favorites/:userId</code></td><td><code>db.select().from(...).where(eq(...))</code></td><td><span class="code s2">200</span> array of rows</td><td><span class="code s5">500</span> catch</td></tr>
+          <tr><td><code>DELETE /api/favorites/:userId/:recipeId</code></td><td><code>db.delete().where(and(eq(...), eq(...)))</code></td><td><span class="code s2">200</span> <code>{ message }</code></td><td><span class="code s5">500</span> catch</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-info">
+      <div class="callout-title">ℹ️ Failure handling lives inside each handler</div>
+      <p>There is no dedicated Express error-handling middleware. Every handler wraps its own body in <code>try / catch</code>, logs the error with <code>console.log</code> and answers <code>500 { error: "Something went wrong" }</code>. Errors thrown <em>before</em> a handler runs (for example a malformed JSON body rejected by <code>express.json()</code>) fall through to Express's built-in default error handler and produce an HTML error page, not JSON.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="folder-structure">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">04</span>
+    <h2>Folder Structure</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>The full backend is six hand-written files inside <code>src/</code> plus three project-level config files. There is no build step — Node runs the ESM sources directly.</p>
+    <div class="tree">
+      <pre>
+backend/
+├─ .env                           <span class="c"># PORT · NODE_ENV · API_URL · DATABASE_URL(+_POOLED) · Clerk key</span>
+├─ package.json                   <span class="c"># ESM ("type":"module") · scripts: dev = nodemon · start = node</span>
+├─ package-lock.json              <span class="c"># npm lockfile for the 6 runtime + 2 dev dependencies</span>
+├─ drizzle.config.js              <span class="c"># drizzle-kit: schema → src/db/schema.js · out → src/db/migrations</span>
+└─ <span class="d">src/</span>
+   ├─ <span class="f">server.js</span> <span class="star">★</span>                  <span class="c"># ENTRY POINT — express app · express.json() · 4 routes · listen(PORT)</span>
+   ├─ <span class="d">config/</span>
+   │  ├─ <span class="f">env.js</span>                  <span class="c"># dotenv/config → ENV { PORT, DATABASE_URL, NODE_ENV }</span>
+   │  ├─ <span class="f">db.js</span>                   <span class="c"># neon(ENV.DATABASE_URL) → drizzle(sql, { schema }) — neon-http driver</span>
+   │  └─ <span class="f">cron.js</span>                 <span class="c"># CronJob('*/14 * * * *') → https.get(API_URL) — exported, not started</span>
+   └─ <span class="d">db/</span>
+      ├─ <span class="f">schema.js</span>               <span class="c"># favoritesTable — the only table definition (pg-core)</span>
+      └─ <span class="d">migrations/</span>
+         ├─ <span class="f">0000_cloudy_runaways.sql</span>   <span class="c"># CREATE TABLE "favorites" ( … ) — 8 columns</span>
+         └─ <span class="d">meta/</span>                 <span class="c"># _journal.json + 0000_snapshot.json — drizzle-kit state</span>
+      </pre>
+    </div>
+    <p class="diagram-note" style="color:var(--muted)"><code>node_modules/</code> and the generated <code>documentation/</code> folder (this page) are omitted from the tree.</p>
+
+    <h3 class="sub">Folders you would expect in a typical Express project — but that do not exist here</h3>
+    <div class="tech-grid">
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>routes/</strong><small>Routes are declared inline with <code>app.get/post/delete</code> in server.js.</small></div></div>
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>controllers/</strong><small>Each route's inline async function <em>is</em> the controller.</small></div></div>
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>services/</strong><small>No business layer — handlers call Drizzle directly.</small></div></div>
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>middleware/</strong><small>Only <code>express.json()</code> is registered; no custom middleware exists.</small></div></div>
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>models/</strong><small>The single Drizzle table in <code>db/schema.js</code> plays this role.</small></div></div>
+      <div class="tech"><span class="tech-emoji">🚫</span><div><strong>tests/</strong><small>No test framework, no test files, no CI config in the backend.</small></div></div>
+    </div>
+
+    <h3 class="sub">Directory purposes</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Path</th><th>Purpose</th><th>Key contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>src/</code></td><td>All backend source code (ESM JavaScript)</td><td><code>server.js</code></td></tr>
+          <tr><td><code>src/config/</code></td><td>Bootstrapping &amp; cross-cutting configuration — environment, database client, scheduled job</td><td><code>env.js</code>, <code>db.js</code>, <code>cron.js</code></td></tr>
+          <tr><td><code>src/db/</code></td><td>Database schema and generated migration artefacts (drizzle-kit output)</td><td><code>schema.js</code>, <code>migrations/</code></td></tr>
+          <tr><td><code>documentation/</code></td><td>Generated documentation (not part of the runtime)</td><td>this HTML page</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="technologies">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">05</span>
+    <h2>Technologies Used</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Detected automatically from <code>package.json</code>, <code>drizzle.config.js</code> and the imports in <code>src/</code>. Status tags reflect what the code actually does — installed is not the same as active.</p>
+    <div class="tech-grid">
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/nodedotjs/5FA04E" alt="Node.js" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Node.js</strong><small>Runtime · ESM (<code>"type":"module"</code>)</small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/express/FFFFFF" alt="Express" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Express 5.2.1</strong><small>HTTP framework — the only framework in the backend</small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/javascript/F7DF1E" alt="JavaScript" loading="lazy" onerror="window.__iconFail(this)"><div><strong>JavaScript</strong><small>No TypeScript anywhere in the backend</small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/drizzle/C5F74F" alt="Drizzle ORM" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Drizzle ORM 0.45.2</strong><small>Query builder + schema DSL (<code>pg-core</code>)</small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/neon/00E599" alt="Neon" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Neon serverless</strong><small><code>@neondatabase/serverless</code> 1.1.0 · <code>neon-http</code> driver</small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/postgresql/4169E1" alt="PostgreSQL" loading="lazy" onerror="window.__iconFail(this)"><div><strong>PostgreSQL</strong><small>Managed by Neon · 1 table · dialect <code>postgresql</code></small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/dotenv/ECD53F" alt="dotenv" loading="lazy" onerror="window.__iconFail(this)"><div><strong>dotenv 17.4.2</strong><small><code>import "dotenv/config"</code> in <code>config/env.js</code></small><br><span class="tag live">Active</span></div></div>
+      <div class="tech"><span class="tech-emoji">⏱️</span><div><strong>cron 4.4.0</strong><small>Keep-alive self-ping every 14 min — written, exported, never started</small><br><span class="tag off">Configured · disabled</span></div></div>
+      <div class="tech"><span class="tech-emoji">🌐</span><div><strong>cors 2.8.6</strong><small>In <code>dependencies</code> but <strong>never registered</strong> via <code>app.use(cors())</code></small><br><span class="tag unused">Installed · unused</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/nodemon/76D04B" alt="nodemon" loading="lazy" onerror="window.__iconFail(this)"><div><strong>nodemon 3.1.14</strong><small>Dev auto-restart — <code>npm run dev</code></small><br><span class="tag dev">Dev only</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/npm/CB3837" alt="drizzle-kit" loading="lazy" onerror="window.__iconFail(this)"><div><strong>drizzle-kit 0.31.11</strong><small>Migration generation via CLI (<code>drizzle.config.js</code>)</small><br><span class="tag dev">Dev only</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/clerk/6C47FF" alt="Clerk" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Clerk</strong><small><code>@clerk/expo</code> 4.7.1 — identity on the <em>client</em>; backend has no Clerk code</small><br><span class="tag client">Client-side</span></div></div>
+      <div class="tech"><img class="tech-icon" src="https://cdn.simpleicons.org/render/46E3B7" alt="Render" loading="lazy" onerror="window.__iconFail(this)"><div><strong>Render.com</strong><small>Hosting target (<code>recipe-app-lrg5.onrender.com</code>) — free tier, cold starts</small><br><span class="tag off">Hosting</span></div></div>
+      <div class="tech"><span class="tech-emoji">🍽️</span><div><strong>TheMealDB</strong><small>Recipe catalog — fetched by the mobile client, never by this backend</small><br><span class="tag client">Client-side</span></div></div>
+    </div>
+    <h3 class="sub">Dependencies — exactly as declared in package.json</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Package</th><th>Declared version</th><th>Role in this codebase</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code>express</code></td><td>^5.2.1</td><td>HTTP server, routing, JSON responses</td><td><span class="tag live">Active</span></td></tr>
+          <tr><td><code>@neondatabase/serverless</code></td><td>^1.1.0</td><td>Neon HTTP driver — <code>neon(ENV.DATABASE_URL)</code> in db.js</td><td><span class="tag live">Active</span></td></tr>
+          <tr><td><code>drizzle-orm</code></td><td>^0.45.2</td><td>Schema definition + query building (<code>insert</code>, <code>select</code>, <code>delete</code>)</td><td><span class="tag live">Active</span></td></tr>
+          <tr><td><code>dotenv</code></td><td>^17.4.2</td><td>Loads <code>.env</code> at import time of config/env.js</td><td><span class="tag live">Active</span></td></tr>
+          <tr><td><code>cron</code></td><td>^4.4.0</td><td>Keep-alive job — module exists, import commented out in server.js line 8</td><td><span class="tag off">Disabled</span></td></tr>
+          <tr><td><code>cors</code></td><td>^2.8.6</td><td>Never imported anywhere — the API sends no CORS headers</td><td><span class="tag unused">Unused</span></td></tr>
+          <tr><td><code>drizzle-kit</code> <em>(dev)</em></td><td>^0.31.11</td><td>Produced the <code>0000_cloudy_runaways</code> migration; used via CLI</td><td><span class="tag dev">Tooling</span></td></tr>
+          <tr><td><code>nodemon</code> <em>(dev)</em></td><td>^3.1.14</td><td>Auto-restart for <code>npm run dev</code></td><td><span class="tag dev">Tooling</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-info">
+      <div class="callout-title">ℹ️ Deliberately absent</div>
+      <p>No TypeScript compiler, no ESLint/Prettier config, no test runner (Jest/Vitest/Mocha), no validation library (zod/joi/express-validator), no helmet, no logger (morgan/pino), no rate limiter, no JWT/bcrypt, no Socket.IO, no Redis, no Multer/Cloudinary. None of these appear in <code>package.json</code> or the source tree.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="api">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">06</span>
+    <h2>API Architecture</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>All endpoints live under a single base path, <code>/api</code>, and there is exactly one resource: <strong>favorites</strong>. The mobile app reaches them through <code>API_URL = "https://recipe-app-lrg5.onrender.com/api"</code> (<code>mobile/src/constants/api.js</code>).</p>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 4 · Resource map — 1 base path, 1 collection resource, 4 handlers</div>
+      <pre class="mermaid">
+flowchart LR
+  API["Base path<br/>/api"]
+  Health["GET /api/health<br/>liveness probe"]
+  Fav["/favorites<br/>collection"]
+  Post["POST /favorites<br/>create one"]
+  Get["GET /favorites/:userId<br/>list mine"]
+  Del["DELETE /favorites/:userId/:recipeId<br/>remove one"]
+
+  API --> Health
+  API --> Fav
+  Fav --> Post
+  Fav --> Get
+  Fav --> Del
+
+  classDef base fill:#3a2417,stroke:#ff8a4c,color:#ffe6d8
+  classDef coll fill:#152743,stroke:#4f7fd0,color:#dbe9ff
+  classDef g fill:#12342b,stroke:#34d399,color:#d1fae5
+  classDef p fill:#3a3218,stroke:#fbbf24,color:#fdf3d6
+  classDef d fill:#3a1d22,stroke:#f87171,color:#ffe4e4
+  class API base
+  class Health,Fav,Get coll
+  class Post p
+  class Del d
+      </pre>
+    </div>
+
+    <h3 class="sub">Route table (in declaration order)</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>#</th><th>Method &amp; path</th><th>Source</th><th>Auth</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>GET&nbsp;/api/health</code></td><td>server.js 17–19</td><td>none</td><td>Liveness probe → <code>{ success: true }</code></td></tr>
+          <tr><td>2</td><td><code>POST&nbsp;/api/favorites</code></td><td>server.js 21–46</td><td>none</td><td>Insert a favourite for a user</td></tr>
+          <tr><td>3</td><td><code>GET&nbsp;/api/favorites/:userId</code></td><td>server.js 48–62</td><td>none</td><td>List all favourites of a user</td></tr>
+          <tr><td>4</td><td><code>DELETE&nbsp;/api/favorites/:userId/:recipeId</code></td><td>server.js 64–79</td><td>none</td><td>Remove one favourite (composite key from URL)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="diagram-note" style="color:var(--muted)">There is no separate controller or service layer: the "handler" column above is literally the inline async function passed to <code>app.get/post/delete</code> in <code>server.js</code>.</p>
+
+    <div class="endpoint">
+      <div class="endpoint-head">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/api/health</span>
+        <span class="endpoint-meta"><span class="chip c-green">public</span><span class="chip">no DB access</span></span>
+      </div>
+      <div class="endpoint-body">
+        <p>Cheap liveness probe with a hard-coded response — useful for uptime monitoring and for warming the Render dyno after a cold start.</p>
+        <div class="codeblock">
+          <div class="code-head"><span class="code-lang">bash</span><span class="code-path">curl</span><button class="copy-btn" type="button">Copy</button></div>
+          <pre>curl https://recipe-app-lrg5.onrender.com/api/health
+
+# 200 OK
+# {"success":true}</pre>
+        </div>
+        <table class="kv">
+          <tr><td>Response</td><td><span class="code s2">200</span> <code>{ "success": true }</code> — always, with no dependencies touched.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-head">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/favorites</span>
+        <span class="endpoint-meta"><span class="chip c-red">no auth check</span><span class="chip">JSON body</span></span>
+      </div>
+      <div class="endpoint-body">
+        <p>Inserts a favourite row and returns the created record. This is the endpoint the "save recipe" button calls from the mobile app.</p>
+        <h4 class="mini-h">Request body</h4>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td><code>userId</code></td><td>text</td><td>✅ yes</td><td>Clients send the Clerk user id (e.g. <code>user_2abc…</code>); the server does not verify it</td></tr>
+              <tr><td><code>recipeId</code></td><td>integer</td><td>✅ yes</td><td>TheMealDB meal id</td></tr>
+              <tr><td><code>title</code></td><td>text</td><td>✅ yes</td><td>Recipe name as shown in the app</td></tr>
+              <tr><td><code>image</code></td><td>text</td><td>— optional</td><td>Image URL from TheMealDB (<code>strMealThumb</code>)</td></tr>
+              <tr><td><code>cookTime</code></td><td>text</td><td>— optional</td><td>Client currently sends <code>"30 minutes"</code></td></tr>
+              <tr><td><code>servings</code></td><td>text</td><td>— optional</td><td>Client currently sends <code>"4"</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout c-warn" style="margin:12px 0">
+          <div class="callout-title">⚠️ Validation rule (server.js lines 25–27)</div>
+          <p><code>if (!userId || !recipeId || !title)</code> → <span class="code s4">400</span> <code>{ "error": "Missing required fields" }</code>. Nothing else is validated: types, string lengths and duplicates are accepted as-is — saving the same recipe twice creates two rows.</p>
+        </div>
+      </div>
+    </div>
+    <h4 class="mini-h">Client call (mirrors mobile/src/app/recipe/[id].jsx)</h4>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">js</span><span class="code-path">save favourite</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>const API_URL = "https://recipe-app-lrg5.onrender.com/api";
+
+const response = await fetch(`${API_URL}/favorites`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    userId: user.id, recipeId, title, image, cookTime, servings,
+  }),
+});</pre>
+    </div>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">json</span><span class="code-path">201 Created — inserted row (Drizzle maps columns to camelCase)</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>{
+  "id": 12,
+  "userId": "user_2abcXYZ",
+  "recipeId": 52772,
+  "title": "Teriyaki Chicken Casserole",
+  "image": "https://www.themealdb.com/images/media/meals/wvpsxx1468256321.jpg",
+  "cookTime": "30 minutes",
+  "servings": "4",
+  "createdAt": "2026-09-30T09:15:42.118Z"
+}</pre>
+    </div>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">json</span><span class="code-path">error shapes</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>// 400 — userId, recipeId or title missing
+{ "error": "Missing required fields" }
+
+// 500 — anything thrown inside the handler
+{ "error": "Something went wrong" }</pre>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-head">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/api/favorites/<span class="param">:userId</span></span>
+        <span class="endpoint-meta"><span class="chip c-red">no auth check</span><span class="chip">returns array</span></span>
+      </div>
+      <div class="endpoint-body">
+        <p>Loads every favourite row that belongs to the given user id. The favourites tab in the app calls this on mount.</p>
+        <div class="codeblock">
+          <div class="code-head"><span class="code-lang">bash</span><span class="code-path">curl</span><button class="copy-btn" type="button">Copy</button></div>
+          <pre>curl https://recipe-app-lrg5.onrender.com/api/favorites/user_2abcXYZ
+
+# 200 OK — always an array; empty array when the user has no favourites
+[{ "id": 12, "userId": "user_2abcXYZ", "recipeId": 52772,
+   "title": "Teriyaki Chicken Casserole", "image": "https://…",
+   "cookTime": "30 minutes", "servings": "4",
+   "createdAt": "2026-09-30T09:15:42.118Z" }]</pre>
+        </div>
+        <table class="kv">
+          <tr><td>Behaviour</td><td>No pagination, no limit and no sorting — the full result set is returned for the user id.</td></tr>
+          <tr><td>Failure</td><td><span class="code s5">500</span> <code>{ "error": "Something went wrong" }</code> if the query throws.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="endpoint">
+      <div class="endpoint-head">
+        <span class="method del">DELETE</span>
+        <span class="endpoint-path">/api/favorites/<span class="param">:userId</span>/<span class="param">:recipeId</span></span>
+        <span class="endpoint-meta"><span class="chip c-red">no auth check</span><span class="chip">idempotent-looking</span></span>
+      </div>
+      <div class="endpoint-body">
+        <p>Deletes one favourite using the composite key <code>(userId, recipeId)</code> taken from the URL. This is exactly what the app's "unsave" action triggers.</p>
+        <div class="codeblock">
+          <div class="code-head"><span class="code-lang">bash</span><span class="code-path">curl</span><button class="copy-btn" type="button">Copy</button></div>
+          <pre>curl -X DELETE https://recipe-app-lrg5.onrender.com/api/favorites/user_2abcXYZ/52772
+
+# 200 OK
+{ "message": "Favorite removed successfully" }</pre>
+        </div>
+        <table class="kv">
+          <tr><td>Parsing</td><td><code>recipeId</code> is coerced with <code>parseInt(recipeId)</code> (server.js line 71). A non-numeric segment becomes <code>NaN</code> and the Postgres cast fails → <span class="code s5">500</span>.</td></tr>
+          <tr><td>Response</td><td>Always the same success message — the handler does <strong>not</strong> check whether a row was actually removed, so deleting a non-existent favourite still returns <span class="code s2">200</span>.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <h3 class="sub">API conventions observed</h3>
+    <div class="chips">
+      <span class="chip c-cyan">JSON in / JSON out</span>
+      <span class="chip c-cyan">errors always <code>{ error: string }</code></span>
+      <span class="chip c-cyan">success shapes vary: object · array · message</span>
+      <span class="chip c-red">no versioning (<code>/api</code>, not <code>/api/v1</code>)</span>
+      <span class="chip c-red">no pagination / filtering / sorting params</span>
+      <span class="chip c-red">no auth headers expected</span>
+      <span class="chip">plural resource name: <code>favorites</code></span>
+      <span class="chip">status codes: 200 / 201 / 400 / 500</span>
+    </div>
+    <div class="callout c-warn">
+      <div class="callout-title">⚠️ Framework-generated responses break the JSON convention</div>
+      <p>Requests that fail before reaching a handler — an unknown path, or a malformed JSON body rejected by <code>express.json()</code> — are answered by Express's built-in default handlers with <strong>HTML</strong> error pages, not the <code>{ error }</code> JSON shape used by the handlers themselves.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="authentication">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">07</span>
+    <h2>Authentication Flow</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <div class="callout c-bad">
+      <div class="callout-title">🛑 Headline finding</div>
+      <p><strong>The backend performs no authentication and no authorization.</strong> There is no token check, no session middleware, no API key and no ownership guard anywhere in <code>backend/src</code>. Identity is established by <strong>Clerk entirely on the client</strong>, and the backend simply trusts the <code>userId</code> string it receives — in a URL parameter for reads/deletes, and in the request body for writes.</p>
+    </div>
+
+    <h3 class="sub">Client-side login &amp; identity passthrough</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 5 · Where authentication actually happens — and where it stops</div>
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as 👤 User
+  participant App as 📱 Expo app
+  participant Clerk as 🔐 Clerk (hosted)
+  participant API as ☁️ Express API (Render)
+  participant DB as 🗄️ Neon PostgreSQL
+
+  U->>App: sign in / sign up
+  App->>Clerk: Clerk SDK auth with publishable key
+  Clerk-->>App: session + user.id
+  App->>App: useUser() exposes user.id
+  App->>API: request carries userId in path or body
+  Note over App,API: no token, no Authorization header, no cookie
+  API->>API: no verification step exists
+  API->>DB: query scoped only by the supplied user_id
+  DB-->>API: rows
+  API-->>App: 200 JSON
+      </pre>
+    </div>
+
+    <h3 class="sub">The trust boundary</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 6 · What is verified vs. what is merely assumed</div>
+      <pre class="mermaid">
+flowchart LR
+  ClerkSession["🔐 Clerk session<br/>user.id = user_2abc…"]
+  Fetch["📱 Expo app<br/>useUser() + fetch()"]
+  APINode["☁️ Express API<br/>no auth middleware"]
+  DB[("favorites<br/>WHERE user_id = $1")]
+
+  ClerkSession -->|"signed by Clerk, verified by the client SDK"| Fetch
+  Fetch -->|"userId sent as a plain string — unverified"| APINode
+  APINode -->|"trusted as-is"| DB
+
+  classDef ok fill:#12342b,stroke:#34d399,color:#d1fae5
+  classDef warn fill:#3a1d22,stroke:#f87171,color:#ffe4e4
+  class ClerkSession,Fetch ok
+  class APINode,DB warn
+      </pre>
+    </div>
+
+    <h3 class="sub">Authentication inventory</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Concern</th><th>Implementation in this repo</th><th>Location</th></tr></thead>
+        <tbody>
+          <tr><td>Sign-in / sign-up UI</td><td>Clerk components in the Expo app</td><td><code>mobile/src/app/(auth)/</code></td></tr>
+          <tr><td>Session</td><td>Clerk SDK session exposed via <code>useUser()</code></td><td>mobile app</td></tr>
+          <tr><td>Token generation</td><td>Clerk (hosted service)</td><td>external — never touches the backend</td></tr>
+          <tr><td>Token verification</td><td>❌ none</td><td>—</td></tr>
+          <tr><td>Protected routes</td><td>❌ none — all four endpoints are public</td><td>—</td></tr>
+          <tr><td>Authorization (“this row is mine”)</td><td>⚠️ implicit only — queries filter by the <em>caller-supplied</em> <code>userId</code></td><td>server.js 52–55, 68–72</td></tr>
+          <tr><td>Password hashing (bcrypt/argon2)</td><td>❌ not installed, not used</td><td>—</td></tr>
+          <tr><td>JWT libraries</td><td>❌ not installed, not used</td><td>—</td></tr>
+          <tr><td>API keys / rate limiting</td><td>❌ none</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout c-bad">
+      <div class="callout-title">🔓 Risk: data isolation relies on the caller's honesty</div>
+      <p>Because the handlers trust <code>userId</code>:</p>
+      <ul class="tight">
+        <li><code>GET /api/favorites/{userId}</code> returns another user's favourites to anyone who knows or guesses their Clerk id.</li>
+        <li><code>DELETE /api/favorites/{userId}/{recipeId}</code> lets an attacker delete another user's saved recipes.</li>
+        <li><code>POST /api/favorites</code> lets a caller write rows attributed to any user id.</li>
+      </ul>
+      <p style="margin-top:8px"><strong>Mitigation (not yet implemented):</strong> verify the Clerk session token server-side — e.g. Clerk's Express middleware or <code>verifyToken</code> — then derive <code>userId</code> from the verified token and ignore any client-supplied id.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="database">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">08</span>
+    <h2>Database Layer</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>The database is a <strong>Neon serverless PostgreSQL</strong> instance reached over HTTPS. The schema is declared with Drizzle's <code>pg-core</code> DSL in <code>src/db/schema.js</code> and applied with drizzle-kit migrations. Exactly <strong>one table</strong> exists: <code>favorites</code>.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 7 · Entity relationship — 1 table, 0 enforced foreign keys</div>
+      <pre class="mermaid">
+erDiagram
+  CLERK_USER ||..o{ FAVORITES : "user_id — logical link only, no FK"
+  THEMEALDB_MEAL ||..o{ FAVORITES : "recipe_id — external id, no FK"
+  FAVORITES {
+    serial id PK "auto increment"
+    text user_id "NOT NULL — Clerk user id"
+    integer recipe_id "NOT NULL — TheMealDB meal id"
+    text title "NOT NULL — recipe name"
+    text image "NULL — image URL"
+    text cook_time "NULL — free text, e.g. 30 minutes"
+    text servings "NULL — stored as text"
+    timestamp created_at "DEFAULT now()"
+  }
+      </pre>
+      <div class="diagram-note">Dashed relationships are <strong>logical only</strong> — the database enforces no foreign keys. <code>user_id</code> points at a Clerk user that lives in Clerk's cloud; <code>recipe_id</code> points at a TheMealDB meal that lives on themealdb.com.</div>
+    </div>
+
+    <h3 class="sub">Column reference (public.favorites)</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Column</th><th>Drizzle property</th><th>SQL type</th><th>Constraints</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code></td><td><code>id</code></td><td>serial</td><td>PK · NOT NULL</td><td>Auto-increment surrogate key</td></tr>
+          <tr><td><code>user_id</code></td><td><code>userId</code></td><td>text</td><td>NOT NULL</td><td>Clerk user id — the only ownership marker</td></tr>
+          <tr><td><code>recipe_id</code></td><td><code>recipeId</code></td><td>integer</td><td>NOT NULL</td><td>TheMealDB meal id (<code>idMeal</code>)</td></tr>
+          <tr><td><code>title</code></td><td><code>title</code></td><td>text</td><td>NOT NULL</td><td>Denormalised copy of the meal name</td></tr>
+          <tr><td><code>image</code></td><td><code>image</code></td><td>text</td><td>nullable</td><td>URL string — no file storage involved</td></tr>
+          <tr><td><code>cook_time</code></td><td><code>cookTime</code></td><td>text</td><td>nullable</td><td>Free text; the client sends <code>"30 minutes"</code></td></tr>
+          <tr><td><code>servings</code></td><td><code>servings</code></td><td>text</td><td>nullable</td><td>Text, even though the client sends a number-like value</td></tr>
+          <tr><td><code>created_at</code></td><td><code>createdAt</code></td><td>timestamp</td><td>DEFAULT <code>now()</code></td><td>Set by the database, never by application code</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3 class="sub">Data flow</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 8 · From handler call to JSON rows</div>
+      <pre class="mermaid">
+flowchart LR
+  H["route handler<br/>server.js"]
+  Schema["favoritesTable<br/>db/schema.js"]
+  Q["Drizzle query builder<br/>insert / select / delete"]
+  Driver["neon-http client<br/>config/db.js"]
+  PG[("PostgreSQL<br/>public.favorites")]
+  Rows["rows mapped to camelCase<br/>→ res.json()"]
+
+  Schema -.->|"defines columns & result keys"| Q
+  H --> Q
+  Q -->|"parameterised SQL"| Driver
+  Driver -->|"HTTPS — Neon serverless driver"| PG
+  PG --> Rows
+      </pre>
+    </div>
+
+    <h3 class="sub">The SQL that actually runs</h3>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">sql</span><span class="code-path">operator equivalents (parameterised by Drizzle)</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>-- POST /api/favorites
+INSERT INTO favorites (user_id, recipe_id, title, image, cook_time, servings)
+VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
+
+-- GET /api/favorites/:userId
+SELECT * FROM favorites WHERE user_id = $1;
+
+-- DELETE /api/favorites/:userId/:recipeId
+DELETE FROM favorites WHERE user_id = $1 AND recipe_id = $2;</pre>
+    </div>
+
+    <h3 class="sub">Migration artefacts</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><a href="../src/db/schema.js"><code>src/db/schema.js</code></a></td><td>Source of truth: <code>favoritesTable</code> with 8 columns</td></tr>
+          <tr><td><a href="../src/db/migrations/0000_cloudy_runaways.sql"><code>migrations/0000_cloudy_runaways.sql</code></a></td><td>The single generated <code>CREATE TABLE "favorites"</code> statement</td></tr>
+          <tr><td><code>migrations/meta/_journal.json</code></td><td>drizzle-kit journal — one entry, tag <code>0000_cloudy_runaways</code></td></tr>
+          <tr><td><code>migrations/meta/0000_snapshot.json</code></td><td>Schema snapshot used to diff future migrations</td></tr>
+          <tr><td><a href="../drizzle.config.js"><code>drizzle.config.js</code></a></td><td>Dialect <code>postgresql</code>, schema path, output path, credentials from <code>ENV.DATABASE_URL</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout c-warn">
+      <div class="callout-title">⚠️ Schema observations</div>
+      <ul class="tight">
+        <li><strong>No unique constraint</strong> on <code>(user_id, recipe_id)</code> — POSTing the same recipe twice stores two rows.</li>
+        <li><strong>No index on <code>user_id</code></strong> beyond the primary key — listing favourites scans the table as it grows.</li>
+        <li><strong>No foreign keys</strong> — impossible for <code>user_id</code> (Clerk lives outside the database) and skipped for <code>recipe_id</code> (TheMealDB is external).</li>
+        <li><strong>No <code>updated_at</code>, no soft-delete flag</strong> — deletes are hard deletes.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="middleware">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">09</span>
+    <h2>Middleware Pipeline</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>This is deliberately one of the shortest sections: <strong>the only middleware registered in the entire backend is <code>express.json()</code></strong> at <code>server.js</code> line&nbsp;15. Everything else people usually expect — CORS, Helmet, logging, auth guards, schema validation, a central error handler — is absent. The "pipeline" is therefore body-parser → route matching → inline handler.</p>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 9 · Actual middleware execution order</div>
+      <pre class="mermaid">
+flowchart TB
+  R(["Request"])
+  Builtin["Express 5 built-in router<br/>(path &amp; method matching engine)"]
+  M1["app.use(express.json())<br/>server.js line 15 — the only registered middleware"]
+  M2{"route matches a declared path?"}
+  NF["Express default 404 (finalhandler)<br/>HTML response — no custom handler exists"]
+  M3["inline async handler runs<br/>acts as controller + manual validation"]
+  Bad["400 JSON error<br/>POST only: missing userId / recipeId / title"]
+  M4["Drizzle query — Neon round-trip"]
+  Ok["200 / 201 JSON payload"]
+  Err["per-handler catch<br/>console.log + 500 JSON error"]
+
+  R --> Builtin
+  Builtin --> M1
+  M1 --> M2
+  M2 -->|"no"| NF
+  M2 -->|"yes"| M3
+  M3 -->|"invalid input"| Bad
+  M3 -->|"valid input"| M4
+  M4 --> Ok
+  M3 -.->|"throws"| Err
+
+  classDef step fill:#152743,stroke:#4f7fd0,color:#e3edff
+  classDef good fill:#12342b,stroke:#34d399,color:#d1fae5
+  classDef bad fill:#3a1d22,stroke:#f87171,color:#ffe4e4
+  classDef soft fill:#1c2333,stroke:#5a6b8c,color:#aab8d4
+  class R,Builtin,M1,M3,M4 step
+  class Ok good
+  class Bad,Err,NF bad
+  class M2 soft
+      </pre>
+    </div>
+
+    <h3 class="sub">Registered vs. absent</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Layer</th><th>Status in this backend</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Body parser</td><td>✅ registered — <code>express.json()</code></td><td>server.js line 15 (runs before all routes)</td></tr>
+          <tr><td>Router (path matching)</td><td>✅ built into Express</td><td><code>app.get/post/delete</code> registrations</td></tr>
+          <tr><td>404 handling</td><td>✅ Express default only — HTML response</td><td>no <code>app.use()</code> fallback handler exists</td></tr>
+          <tr><td>Error handling</td><td>⚠️ per-handler <code>try/catch</code>; framework default for pre-handler errors</td><td>server.js 22–45, 49–61, 65–78</td></tr>
+          <tr><td>CORS</td><td>❌ never registered (package installed)</td><td>no <code>import cors</code> anywhere in <code>src/</code></td></tr>
+          <tr><td>Helmet / security headers</td><td>❌ not installed</td><td>package.json</td></tr>
+          <tr><td>Logging (morgan/pino)</td><td>❌ none — bare <code>console.log</code> on errors and boot</td><td>server.js 43, 59, 76, 82</td></tr>
+          <tr><td>Compression</td><td>❌ not installed</td><td>package.json</td></tr>
+          <tr><td>Rate limiting</td><td>❌ not installed</td><td>package.json</td></tr>
+          <tr><td>Auth guard / token middleware</td><td>❌ does not exist</td><td>see §07</td></tr>
+          <tr><td>Schema validation (zod/joi)</td><td>❌ none — three manual <code>if (!x)</code> checks in POST only</td><td>server.js 25–27</td></tr>
+          <tr><td>Static file serving</td><td>❌ none — the API serves JSON only</td><td>no <code>express.static</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-info">
+      <div class="callout-title">ℹ️ Practical consequence of the missing CORS layer</div>
+      <p>Native mobile clients are not subject to browser CORS rules, so the iOS/Android app works fine. A browser-based client (for example the Expo <em>web</em> target, which is configured in <code>mobile/package.json</code>) would be blocked by the browser because the API returns no <code>Access-Control-Allow-Origin</code> header. Registering the already-installed <code>cors</code> package would restore web access.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="external-services">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">10</span>
+    <h2>External Services</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Only <strong>one</strong> external service is called by backend code: <strong>Neon</strong>. Render hosts the process (and is the target of the disabled keep-alive ping). Clerk and TheMealDB are integrations of the <em>mobile client</em>, shown here so the platform picture is complete.</p>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 10 · Integration map — who calls whom</div>
+      <pre class="mermaid">
+flowchart LR
+  subgraph PLATFORM["Recipe App platform"]
+    Mobile["📱 Expo client<br/>iOS · Android · web target"]
+    API["☁️ Express API on Render<br/>recipe-app-lrg5.onrender.com"]
+    PG[("Neon PostgreSQL<br/>favorites")]
+  end
+
+  Clerk["🔐 Clerk<br/>identity — client-side only"]
+  Render["🟠 Render.com<br/>build · host · TLS"]
+  TheMeal["🍽️ TheMealDB<br/>recipes + images"]
+  Cron["⏱️ config/cron.js self-ping<br/>commented out"]
+
+  Mobile -->|"sign in / session"| Clerk
+  Mobile -->|"recipe catalog — direct fetch"| TheMeal
+  Mobile -->|"favorites CRUD over HTTPS"| API
+  API -->|"SQL via neon-http"| PG
+  Render -.->|"hosts the API process"| API
+  Cron -.->|"GET /api/health every 14 min — disabled"| API
+
+  classDef backend fill:#3a2417,stroke:#ff8a4c,color:#ffe6d8
+  classDef client fill:#152743,stroke:#4f7fd0,color:#dbe9ff
+  classDef ext fill:#241d3d,stroke:#8b6ff0,color:#e9e2ff
+  classDef data fill:#12283a,stroke:#38a3d6,color:#d8f1ff
+  classDef off fill:#1c2333,stroke:#5a6b8c,color:#aab8d4,stroke-dasharray:5 4
+  class API backend
+  class Mobile client
+  class Clerk,Render,TheMeal ext
+  class PG data
+  class Cron off
+      </pre>
+    </div>
+
+    <h3 class="sub">Integration inventory</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Service</th><th>Direction</th><th>Called from</th><th>Transport</th><th>Purpose</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Neon</td><td>backend → Neon</td><td><code>src/config/db.js</code></td><td>HTTPS via <code>neon-http</code> driver</td><td>All SQL queries against <code>favorites</code></td><td><span class="tag live">Active</span></td></tr>
+          <tr><td>Render.com</td><td>platform → backend</td><td>deployment target</td><td>HTTPS + TLS termination</td><td>Hosts the Express process; free tier means cold starts</td><td><span class="tag off">Hosting</span></td></tr>
+          <tr><td>Clerk</td><td>client ↔ Clerk</td><td>mobile app only</td><td>HTTPS + Clerk SDK</td><td>Sessions and <code>user.id</code> used as the favourites key</td><td><span class="tag client">Client-side</span></td></tr>
+          <tr><td>TheMealDB</td><td>client → TheMealDB</td><td><code>mobile/src/services/mealAPI.js</code></td><td>HTTPS REST</td><td>Recipe catalog, search and image URLs — never proxied through this backend</td><td><span class="tag client">Client-side</span></td></tr>
+          <tr><td>Self ping (cron)</td><td>backend → itself</td><td><code>src/config/cron.js</code></td><td>HTTPS GET</td><td>Keep Render awake every 14 minutes</td><td><span class="tag off">Disabled</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-info">
+      <div class="callout-title">ℹ️ No other integrations exist</div>
+      <p>There is no payment provider, no email/SMS sender, no push-notification service, no object storage (the <code>image</code> column stores a URL, not a file), no OAuth provider beyond Clerk and no third-party API called by backend code.</p>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="diagrams">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">11</span>
+    <h2>Diagram Gallery</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Additional views of the same codebase: a module-level component graph, the physical deployment, and the read/delete request sequences that complement the write path in <a href="#request-flow">§03</a>.</p>
+
+    <h3 class="sub">Component diagram — how the modules import each other</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 11 · backend/src import graph, exactly as written</div>
+      <pre class="mermaid">
+flowchart TB
+  Server["src/server.js<br/>Express app · 4 endpoints · app.listen"]
+  Env["src/config/env.js<br/>ENV { PORT, DATABASE_URL, NODE_ENV }"]
+  Db["src/config/db.js<br/>db = drizzle(neon(url), { schema })"]
+  Schema["src/db/schema.js<br/>favoritesTable"]
+  Cron["src/config/cron.js<br/>keep-alive CronJob"]
+  Mig["src/db/migrations/<br/>0000_cloudy_runaways.sql + meta"]
+  ORM["drizzle-orm<br/>and, eq operators"]
+
+  Server -->|"import { ENV }"| Env
+  Server -->|"import { db }"| Db
+  Server -->|"import { favoritesTable }"| Schema
+  Server -->|"import { and, eq }"| ORM
+  Db --> Env
+  Db --> Schema
+  Server -.->|"import commented out — line 8"| Cron
+  Schema -.->|"drizzle-kit generate"| Mig
+  Cron -.->|"https.get(process.env.API_URL)"| Server
+
+  classDef mod fill:#152743,stroke:#4f7fd0,color:#dbe9ff
+  classDef cfg fill:#3a2417,stroke:#ff8a4c,color:#ffe6d8
+  classDef data fill:#12283a,stroke:#38a3d6,color:#d8f1ff
+  classDef off fill:#1c2333,stroke:#5a6b8c,color:#aab8d4,stroke-dasharray:5 4
+  class Server,ORM mod
+  class Env,Db cfg
+  class Schema,Mig data
+  class Cron off
+      </pre>
+    </div>
+
+    <h3 class="sub">Deployment diagram</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 12 · Physical deployment — devices → Render → Neon</div>
+      <pre class="mermaid">
+flowchart LR
+  subgraph DEV["Client devices"]
+    iOS["iOS build (Expo)"]
+    AND["Android build (Expo)"]
+    WEB["Expo web target (optional)"]
+  end
+  Edge["HTTPS · TLS termination<br/>recipe-app-lrg5.onrender.com/api"]
+  subgraph REN["Render.com — free tier"]
+    Proc["Node.js process<br/>npm start → node src/server.js"]
+  end
+  subgraph NEONC["Neon — managed PostgreSQL"]
+    T[("public.favorites")]
+  end
+
+  iOS --> Edge
+  AND --> Edge
+  WEB --> Edge
+  Edge --> Proc
+  Proc -->|"neon-http over HTTPS"| T
+
+  classDef dev fill:#152743,stroke:#4f7fd0,color:#dbe9ff
+  classDef host fill:#3a2417,stroke:#ff8a4c,color:#ffe6d8
+  classDef data fill:#12283a,stroke:#38a3d6,color:#d8f1ff
+  class iOS,AND,WEB dev
+  class Edge,Proc host
+  class T data
+      </pre>
+      <div class="diagram-note">On the free tier Render suspends idle services — hence the (currently disabled) 14-minute self-ping. The first request after suspension pays a cold-start penalty.</div>
+    </div>
+    <h3 class="sub">Read path — GET /api/favorites/:userId</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 13 · Loading the favourites list</div>
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant App as 📱 Expo app
+  participant API as ☁️ Express — server.js
+  participant ORM as 🧩 Drizzle ORM
+  participant DB as 🗄️ Neon PostgreSQL
+
+  App->>API: GET /api/favorites/:userId
+  API->>API: read req.params.userId
+  API->>ORM: db.select().from(favoritesTable).where(eq(...))
+  ORM->>DB: SELECT * FROM favorites WHERE user_id = $1
+  DB-->>ORM: matching rows
+  ORM-->>API: userFavorites[]
+  API-->>App: 200 JSON array — empty array when none
+      </pre>
+    </div>
+
+    <h3 class="sub">Delete path — DELETE /api/favorites/:userId/:recipeId</h3>
+    <div class="diagram">
+      <div class="diagram-cap"><span class="dot"></span>Figure 14 · Unsaving a favourite</div>
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant App as 📱 Expo app
+  participant API as ☁️ Express — server.js
+  participant DB as 🗄️ Neon PostgreSQL
+
+  App->>API: DELETE /api/favorites/:userId/:recipeId
+  API->>API: parseInt(recipeId) — nothing else validated
+  API->>DB: DELETE FROM favorites WHERE user_id = $1 AND recipe_id = $2
+  DB-->>API: rows affected — result is not inspected
+  API-->>App: 200 { message: "Favorite removed successfully" }
+      </pre>
+      <div class="diagram-note">Because the affected-row count is discarded, the client cannot distinguish "deleted" from "nothing matched".</div>
+    </div>
+
+    <h3 class="sub">Figure index</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Figure</th><th>View</th><th>Type</th><th>Section</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>System architecture</td><td>flowchart</td><td><a href="#architecture">§02</a></td></tr>
+          <tr><td>2</td><td>Generic request lifecycle</td><td>flowchart</td><td><a href="#request-flow">§03</a></td></tr>
+          <tr><td>3</td><td>POST /api/favorites</td><td>sequence</td><td><a href="#request-flow">§03</a></td></tr>
+          <tr><td>4</td><td>Resource map</td><td>flowchart</td><td><a href="#api">§06</a></td></tr>
+          <tr><td>5</td><td>Client login &amp; identity passthrough</td><td>sequence</td><td><a href="#authentication">§07</a></td></tr>
+          <tr><td>6</td><td>Trust boundary</td><td>flowchart</td><td><a href="#authentication">§07</a></td></tr>
+          <tr><td>7</td><td>Entity relationship</td><td>ER diagram</td><td><a href="#database">§08</a></td></tr>
+          <tr><td>8</td><td>Data flow to SQL</td><td>flowchart</td><td><a href="#database">§08</a></td></tr>
+          <tr><td>9</td><td>Middleware execution order</td><td>flowchart</td><td><a href="#middleware">§09</a></td></tr>
+          <tr><td>10</td><td>External integration map</td><td>flowchart</td><td><a href="#external-services">§10</a></td></tr>
+          <tr><td>11</td><td>Module import graph (component)</td><td>flowchart</td><td><a href="#diagrams">§11</a></td></tr>
+          <tr><td>12</td><td>Deployment</td><td>flowchart</td><td><a href="#diagrams">§11</a></td></tr>
+          <tr><td>13</td><td>GET favourites</td><td>sequence</td><td><a href="#diagrams">§11</a></td></tr>
+          <tr><td>14</td><td>DELETE favourite</td><td>sequence</td><td><a href="#diagrams">§11</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+<section class="doc-section" id="notes">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">12</span>
+    <h2>Architecture Notes &amp; Gaps</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Findings gathered while reading the source. Each one references the section where the evidence lives; none of these are speculative features — they are all visible in the current code.</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Severity</th><th>Finding</th><th>Impact</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip c-red">High</span></td><td>No server-side authentication or authorization — <code>userId</code> is trusted from the caller</td><td>Any caller can read, write or delete favourites for any user id</td><td><a href="#authentication">§07</a></td></tr>
+          <tr><td><span class="chip c-yellow">Medium</span></td><td><code>cors</code> is installed but never registered</td><td>Browser-based clients (Expo web) are blocked; native apps unaffected</td><td><a href="#middleware">§09</a></td></tr>
+          <tr><td><span class="chip c-yellow">Medium</span></td><td>No unique constraint on <code>(user_id, recipe_id)</code></td><td>Double-saving a recipe stores duplicate rows that the UI must dedupe</td><td><a href="#database">§08</a></td></tr>
+          <tr><td><span class="chip c-yellow">Medium</span></td><td>Input validation is three truthiness checks in POST only</td><td>Wrong types reach Postgres; a non-numeric <code>recipeId</code> in DELETE returns 500 instead of 400</td><td><a href="#api">§06</a></td></tr>
+          <tr><td><span class="chip c-yellow">Medium</span></td><td>Framework errors (404, bad JSON body) return HTML, not the JSON error shape</td><td>Clients expecting <code>{ error }</code> must handle a second format</td><td><a href="#api">§06</a></td></tr>
+          <tr><td><span class="chip c-green">Low</span></td><td>No index on <code>user_id</code> — the primary read pattern scans</td><td>Slower <code>GET /favorites/:userId</code> as the table grows</td><td><a href="#database">§08</a></td></tr>
+          <tr><td><span class="chip c-green">Low</span></td><td>DELETE reports success even when no row matched</td><td>Client cannot detect a no-op delete</td><td><a href="#api">§06</a></td></tr>
+          <tr><td><span class="chip c-green">Low</span></td><td>Keep-alive cron is commented out</td><td>Render free-tier cold starts make the first request slow</td><td><a href="#external-services">§10</a></td></tr>
+          <tr><td><span class="chip c-green">Low</span></td><td><code>DATABASE_URL_POOLED</code> is defined but unused</td><td>Dead configuration is easy to misread during incidents</td><td><a href="#overview">§01</a></td></tr>
+          <tr><td><span class="chip">Info</span></td><td>Logging is bare <code>console.log</code> only</td><td>No request logs, correlation ids or log levels</td><td><a href="#middleware">§09</a></td></tr>
+          <tr><td><span class="chip">Info</span></td><td>No tests, no README, no CI configuration in the backend</td><td>Regressions rely on manual testing</td><td>repository</td></tr>
+          <tr><td><span class="chip">Info</span></td><td>Single-file server with inline handlers, no versioning or pagination</td><td>Fine for 4 endpoints today, but every new resource increases coupling</td><td><a href="#folder-structure">§04</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">Suggested next steps (ordered by impact)</h3>
+    <ol class="tight">
+      <li><strong>Verify Clerk session tokens server-side</strong> and derive <code>userId</code> from the verified token — this closes the impersonation hole described in §07.</li>
+      <li><strong>Register CORS</strong> (<code>app.use(cors(...))</code>) so the Expo web target and any future browser tooling can call the API.</li>
+      <li><strong>Add a unique index</strong> on <code>(user_id, recipe_id)</code> and surface duplicates as a 409 or upsert, so the app cannot store the same favourite twice.</li>
+      <li><strong>Centralise validation and errors</strong> — a small zod schema per route plus one JSON error-handling middleware would remove the HTML error pages.</li>
+      <li><strong>Decide the keep-alive strategy</strong> — re-enable the cron ping, use an external uptime monitor against <code>/api/health</code>, or accept cold starts.</li>
+      <li><strong>Introduce <code>routes/</code> + <code>services/</code> structure and tests</strong> before the second resource (e.g. meal plans or notes) is added.</li>
+    </ol>
+  </div>
+</section>
+<section class="doc-section" id="run">
+  <div class="section-head" role="button" tabindex="0" aria-expanded="true">
+    <span class="section-num">13</span>
+    <h2>Running Locally</h2>
+    <span class="chev">▾</span>
+  </div>
+  <div class="section-body">
+    <p>Two npm scripts exist — nothing else is required to boot the API.</p>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">bash</span><span class="code-path">setup &amp; run</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>cd backend
+npm install
+
+# backend/.env — values consumed by src/config/env.js and src/config/db.js
+PORT=5001
+NODE_ENV=development
+API_URL=http://localhost:5001/api/health   # only used by the (disabled) cron job
+DATABASE_URL=postgresql://…@…neon.tech/…   # Neon connection string
+
+npm run dev     # nodemon src/server.js — auto-restart on change
+npm start       # node src/server.js — plain start
+
+# expected console output:
+# Server is running on PORT: 5001</pre>
+    </div>
+
+    <h3 class="sub">Smoke test once it is running</h3>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">bash</span><span class="code-path">health → create → list → delete</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre>curl http://localhost:5001/api/health
+
+curl -X POST http://localhost:5001/api/favorites \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"test_user","recipeId":52772,"title":"Teriyaki Chicken Casserole"}'
+
+curl http://localhost:5001/api/favorites/test_user
+
+curl -X DELETE http://localhost:5001/api/favorites/test_user/52772</pre>
+    </div>
+
+    <h3 class="sub">Database migrations (drizzle-kit)</h3>
+    <div class="codeblock">
+      <div class="code-head"><span class="code-lang">bash</span><span class="code-path">schema workflow</span><button class="copy-btn" type="button">Copy</button></div>
+      <pre># edit src/db/schema.js first, then:
+npx drizzle-kit generate   # writes a new SQL file into src/db/migrations
+npx drizzle-kit migrate    # applies pending migrations to DATABASE_URL
+# npx drizzle-kit push     # alternative: push schema directly (no migration files)</pre>
+    </div>
+
+    <h3 class="sub">Where to make common changes</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Goal</th><th>File</th><th>What to touch</th></tr></thead>
+        <tbody>
+          <tr><td>Add / change an endpoint</td><td><code>src/server.js</code></td><td>Append another <code>app.method(...)</code> before <code>app.listen</code> (routes occupy lines 17–79)</td></tr>
+          <tr><td>Change the port</td><td><code>src/config/env.js</code> or <code>.env</code></td><td><code>PORT</code> — note the fallback <code>5001</code> appears in two places</td></tr>
+          <tr><td>Point at another database</td><td><code>src/config/db.js</code> / <code>.env</code></td><td><code>DATABASE_URL</code> is the only value the Neon client reads</td></tr>
+          <tr><td>Add or alter a table</td><td><code>src/db/schema.js</code></td><td>Then <code>npx drizzle-kit generate</code> + <code>migrate</code></td></tr>
+          <tr><td>Re-enable the keep-alive</td><td><code>src/server.js</code> lines 8 &amp; 13</td><td>Uncomment the import and the <code>job.start()</code> gate; set <code>API_URL</code></td></tr>
+          <tr><td>Enable CORS</td><td><code>src/server.js</code></td><td><code>import cors from "cors"</code> + <code>app.use(cors())</code> above the routes (package already installed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout c-good">
+      <div class="callout-title">✅ Fast path to understanding this backend</div>
+      <p>Read <a href="../src/server.js"><code>src/server.js</code></a> top to bottom (83 lines), then <a href="../src/config/db.js"><code>config/db.js</code></a> (7 lines) and <a href="../src/db/schema.js"><code>db/schema.js</code></a> (15 lines). That is the entire runtime — 105 lines of JavaScript.</p>
+    </div>
+  </div>
+</section>
+  </main>
+</div>
+<footer class="page-foot">
+  <p><strong>Recipe App — backend documentation.</strong> Generated by static analysis of the <code>backend/</code> directory at commit <code>d508152</code> (branch <code>mobile-screens</code>). All diagram syntax is Mermaid v11 rendered client-side; technology icons come from Simple Icons. Re-generate this page whenever the backend changes.</p>
+  <p class="foot-links">
+    Source of truth:
+    <a href="../src/server.js">src/server.js</a> ·
+    <a href="../src/config/db.js">config/db.js</a> ·
+    <a href="../src/config/env.js">config/env.js</a> ·
+    <a href="../src/config/cron.js">config/cron.js</a> ·
+    <a href="../src/db/schema.js">db/schema.js</a> ·
+    <a href="../src/db/migrations/0000_cloudy_runaways.sql">migrations/0000_cloudy_runaways.sql</a> ·
+    <a href="../drizzle.config.js">drizzle.config.js</a> ·
+    <a href="../package.json">package.json</a>
+  </p>
+</footer>
+<a class="backtop" id="backTop" href="#top" aria-label="Back to top">↑</a>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  /* Icon fallback — inline onerror handlers call window.__iconFail early */
+  window.__iconFail = function (img) {
+    var span = document.createElement("span");
+    span.className = "tech-emoji";
+    span.textContent = (img.alt || "?").charAt(0).toUpperCase();
+    img.replaceWith(span);
+  };
+
+  /* ---------- theme toggle (persisted) ---------- */
+  var root = document.documentElement;
+  var THEME_KEY = "recipe-docs-theme";
+  try { var saved = localStorage.getItem(THEME_KEY); if (saved) { root.dataset.theme = saved; } } catch (e) {}
+  var themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var next = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
+  /* ---------- collapsible sections ---------- */
+  var sections = Array.prototype.slice.call(document.querySelectorAll(".doc-section"));
+  sections.forEach(function (sec) {
+    var head = sec.querySelector(".section-head");
+    if (!head) return;
+    var toggle = function () {
+      sec.classList.toggle("collapsed");
+      head.setAttribute("aria-expanded", String(!sec.classList.contains("collapsed")));
+    };
+    head.addEventListener("click", toggle);
+    head.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+  });
+  function setAll(collapsed) {
+    sections.forEach(function (s) {
+      s.classList.toggle("collapsed", collapsed);
+      var h = s.querySelector(".section-head");
+      if (h) h.setAttribute("aria-expanded", String(!collapsed));
+    });
+  }
+  var expandAll = document.getElementById("expandAll");
+  var collapseAll = document.getElementById("collapseAll");
+  if (expandAll) expandAll.addEventListener("click", function () { setAll(false); });
+  if (collapseAll) collapseAll.addEventListener("click", function () { setAll(true); });
+
+  /* ---------- mobile sidebar ---------- */
+  var menuBtn = document.getElementById("menuBtn");
+  var sidebar = document.getElementById("sidebar");
+  var overlay = document.getElementById("overlay");
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove("open");
+    if (overlay) overlay.classList.remove("show");
+    if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+  }
+  if (menuBtn && sidebar) {
+    menuBtn.addEventListener("click", function () {
+      var open = sidebar.classList.toggle("open");
+      if (overlay) overlay.classList.toggle("show", open);
+      menuBtn.setAttribute("aria-expanded", String(open));
+    });
+  }
+  if (overlay) overlay.addEventListener("click", closeSidebar);
+  Array.prototype.forEach.call(document.querySelectorAll(".nav-link"), function (a) {
+    a.addEventListener("click", closeSidebar);
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSidebar(); });
+
+  /* ---------- active nav highlighting ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-link"));
+  var byId = {};
+  links.forEach(function (a) {
+    var href = a.getAttribute("href") || "";
+    if (href.charAt(0) === "#") byId[href.slice(1)] = a;
+  });
+  var targets = sections.filter(function (s) { return byId[s.id]; });
+  if ("IntersectionObserver" in window && targets.length) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (byId[en.target.id]) byId[en.target.id].classList.add("active");
+      });
+    }, { rootMargin: "-20% 0px -70% 0px", threshold: 0 });
+    targets.forEach(function (t) { spy.observe(t); });
+  }
+
+  /* ---------- scroll progress + back-to-top ---------- */
+  var bar = document.getElementById("progressBar");
+  var backTop = document.getElementById("backTop");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    if (bar) bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+    if (backTop) backTop.classList.toggle("show", h.scrollTop > 600);
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  /* ---------- reveal-on-scroll ---------- */
+  var reveals = Array.prototype.slice.call(document.querySelectorAll(".doc-section, .hero"));
+  if ("IntersectionObserver" in window) {
+    var rio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add("in"); rio.unobserve(en.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { el.classList.add("reveal"); rio.observe(el); });
+  }
+
+  /* ---------- copy buttons ---------- */
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest(".copy-btn") : null;
+    if (!btn) return;
+    var block = btn.closest(".codeblock");
+    var pre = block ? block.querySelector("pre") : null;
+    if (!pre) return;
+    var text = pre.innerText;
+    function done() {
+      btn.textContent = "Copied ✓";
+      btn.classList.add("done");
+      setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1600);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); done(); } catch (err) {}
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  });
+
+  /* ---------- mermaid rendering (one node at a time) ---------- */
+  var nodes = Array.prototype.slice.call(document.querySelectorAll(".mermaid"));
+  function renderMermaid() {
+    if (!window.mermaid) {
+      nodes.forEach(function (n) {
+        n.classList.add("mermaid-error");
+        n.textContent = "Mermaid could not load from the CDN — check the network connection and reload.";
+      });
+      return;
+    }
+    window.mermaid.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      securityLevel: "loose",
+      themeVariables: {
+        background: "#0d1524",
+        primaryColor: "#182338",
+        primaryTextColor: "#e8edf7",
+        primaryBorderColor: "#3b4b6e",
+        lineColor: "#8aa0c8",
+        secondaryColor: "#13203a",
+        tertiaryColor: "#0d1524",
+        clusterBkg: "#0f1727",
+        clusterBorder: "#2b3b5e",
+        fontFamily: "Segoe UI, system-ui, sans-serif",
+        fontSize: "14px"
+      },
+      flowchart: { curve: "basis", htmlLabels: true, padding: 10 },
+      sequence: { mirrorActors: false, useMaxWidth: true },
+      er: { useMaxWidth: true }
+    });
+    nodes.forEach(function (n, i) {
+      setTimeout(function () {
+        window.mermaid.run({ nodes: [n] }).catch(function (err) {
+          n.classList.add("mermaid-error");
+          n.textContent = "Diagram syntax error:\n" + (err && err.message ? err.message : String(err));
+        });
+      }, i * 30);
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renderMermaid);
+  } else {
+    renderMermaid();
+  }
+})();
+
+</script>
+</body>
+</html>
